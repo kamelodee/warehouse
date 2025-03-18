@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Vehicle, createVehicle } from '../../api/vehicleService';
+import { createVehicle } from '../../api/vehicleService';
 
 interface AddVehicleProps {
     isOpen: boolean;

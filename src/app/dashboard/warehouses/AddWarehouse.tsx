@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Warehouse, createWarehouse } from '../../api/warehouseService';
+import { createWarehouse } from '../../api/warehouseService';
 
 interface AddWarehouseProps {
     isOpen: boolean;

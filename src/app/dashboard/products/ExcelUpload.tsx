@@ -247,7 +247,7 @@ const ExcelUpload = ({ isOpen, onClose, onProductsUploaded, onUploadStart, onUpl
                         <li>Code (required) - Product code</li>
                         <li>Name (required) - Product name</li>
                         <li>Barcode (required) - Product barcode</li>
-                        <li>Serialized (optional) - "Yes" or "No" (defaults to "No")</li>
+                        <li>Serialized (optional) - &quot;Yes&quot; or &quot;No&quot; (defaults to &quot;No&quot;)</li>
                     </ul>
                     
                     <div className="mb-4">

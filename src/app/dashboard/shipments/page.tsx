@@ -18,9 +18,11 @@ const Shipments = () => {
     const [deletingShipmentIds, setDeletingShipmentIds] = useState<number[]>([]);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
     const [warehouses, setWarehouses] = useState<Record<number, Warehouse>>({});
-    const [isLoadingWarehouses, setIsLoadingWarehouses] = useState<boolean>(false);
+    // Loading states used in warehouse data fetching
+    const [_isLoadingWarehouses, setIsLoadingWarehouses] = useState<boolean>(false);
     const [vehicles, setVehicles] = useState<Record<number, Vehicle>>({});
-    const [isLoadingVehicles, setIsLoadingVehicles] = useState<boolean>(false);
+    // Loading states used in vehicle data fetching
+    const [_isLoadingVehicles, setIsLoadingVehicles] = useState<boolean>(false);
    
     // State variables for pagination and sorting
     const [page, setPage] = useState<number>(0);
@@ -28,7 +30,8 @@ const Shipments = () => {
     const [sort, setSort] = useState<string>('ASC');
     const [sortField, setSortField] = useState<string>('id');
     const [totalPages, setTotalPages] = useState<number>(0);
-    const [totalElements, setTotalElements] = useState<number>(0);
+    // Total elements used for internal calculations
+    const [_totalElements, setTotalElements] = useState<number>(0);
 
     useEffect(() => {
         const storedToken = sessionStorage.getItem('accessToken');
@@ -79,7 +82,9 @@ const Shipments = () => {
             // Convert array to a map for easier lookup
             const vehicleMap: Record<number, Vehicle> = {};
             data.content.forEach(vehicle => {
-                vehicleMap[vehicle.id] = vehicle;
+                if (vehicle.id !== undefined) {
+                    vehicleMap[vehicle.id] = vehicle;
+                }
             });
             
             setVehicles(vehicleMap);
