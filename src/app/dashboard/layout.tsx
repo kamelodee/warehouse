@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { FaCar } from 'react-icons/fa';
 
 export default function DashboardLayout({
   children,
@@ -37,6 +38,31 @@ export default function DashboardLayout({
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
         </svg>
+      )
+    },
+    { 
+      name: 'Warehouses', 
+      path: '/dashboard/warehouses',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+      )
+    },
+    { 
+      name: 'Shipments', 
+      path: '/dashboard/shipments',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+        </svg>
+      )
+    },
+    { 
+      name: 'Vehicles', 
+      path: '/dashboard/vehicles',
+      icon: (
+        <FaCar className="w-6 h-6" />
       )
     },
   ];
@@ -108,7 +134,7 @@ export default function DashboardLayout({
               <div className="flex items-center">
                 <button
                   onClick={() => setSidebarOpen(true)}
-                  className="p-2 text-gray-500 rounded-md lg:hidden hover:bg-gray-100"
+                  className="p-2 text-gray-500 rounded-md lg:hidden"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
