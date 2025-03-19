@@ -19,10 +19,10 @@ const Shipments = () => {
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
     const [warehouses, setWarehouses] = useState<Record<number, Warehouse>>({});
     // Loading states used in warehouse data fetching
-    const [_isLoadingWarehouses, setIsLoadingWarehouses] = useState<boolean>(false);
+    const [_isLoadingWarehouses, setIsLoadingWarehouses] = useState<boolean>(false); // eslint-disable-line @typescript-eslint/no-unused-vars
     const [vehicles, setVehicles] = useState<Record<number, Vehicle>>({});
     // Loading states used in vehicle data fetching
-    const [_isLoadingVehicles, setIsLoadingVehicles] = useState<boolean>(false);
+    const [_isLoadingVehicles, setIsLoadingVehicles] = useState<boolean>(false); // eslint-disable-line @typescript-eslint/no-unused-vars
    
     // State variables for pagination and sorting
     const [page, setPage] = useState<number>(0);
@@ -31,7 +31,7 @@ const Shipments = () => {
     const [sortField, setSortField] = useState<string>('id');
     const [totalPages, setTotalPages] = useState<number>(0);
     // Total elements used for internal calculations
-    const [_totalElements, setTotalElements] = useState<number>(0);
+    const [_totalElements, setTotalElements] = useState<number>(0); // eslint-disable-line @typescript-eslint/no-unused-vars
 
     useEffect(() => {
         const storedToken = sessionStorage.getItem('accessToken');

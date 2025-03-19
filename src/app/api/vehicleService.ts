@@ -45,7 +45,9 @@ const getHeaders = (): HeadersInit => {
 const logApiError = (method: string, endpoint: string, error: unknown, additionalInfo?: Record<string, unknown>) => {
     console.error(`API Error [${method} ${endpoint}]:`, {
         message: error instanceof Error ? error.message : 'Unknown error',
-        status: error instanceof Error && 'status' in error ? (error as any).status : undefined,
+        status: error instanceof Error && 'status' in error ? 
+            (error as Record<string, unknown>).status : 
+            undefined,
         additionalInfo,
         timestamp: new Date().toISOString()
     });
@@ -65,11 +67,11 @@ const handleResponse = async <T>(response: Response, method: string, endpoint: s
             errorMessage = errorData && typeof errorData === 'object' && 'message' in errorData 
                 ? String(errorData.message) 
                 : `Error ${response.status}: ${response.statusText}`;
-        } catch (e) {
+        } catch (e) { // eslint-disable-line @typescript-eslint/no-unused-vars
             // If not JSON, get text
             try {
                 errorMessage = await response.text();
-            } catch (_textError) {
+            } catch (_textError) { // eslint-disable-line @typescript-eslint/no-unused-vars
                 errorMessage = `Error ${response.status}: ${response.statusText}`;
             }
         }

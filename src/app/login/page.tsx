@@ -8,7 +8,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
+  // Router is used for navigation in other parts of the component
+  const _router = useRouter();
 
   const handleLogin = async () => {
     setIsLoading(true);
@@ -36,14 +37,15 @@ export default function LoginPage() {
         console.error('Login failed:', data);
         alert('Login failed. Please check your credentials.');
       }
-    } catch (err) {
+    } catch (_err) {
       setError('An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleLogout = () => {
+  // Logout function kept for future use
+  const _handleLogout = () => {
     sessionStorage.removeItem('accessToken');
     sessionStorage.removeItem('refreshToken');
     sessionStorage.removeItem('user');

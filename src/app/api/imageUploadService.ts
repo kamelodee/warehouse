@@ -10,7 +10,16 @@ export const uploadImage = async (file: File, productId?: number): Promise<strin
     const token = sessionStorage.getItem('accessToken');
     
     if (!token) {
-        throw new Error('Authentication token not found');
+        const errorMessage = 'Authentication token not found';
+        const error = new Error(errorMessage);
+        
+        // Log the error
+        console.error('Image upload authentication error:', {
+            message: errorMessage,
+            timestamp: new Date().toISOString()
+        });
+        
+        throw error;
     }
     
     try {
@@ -36,15 +45,27 @@ export const uploadImage = async (file: File, productId?: number): Promise<strin
         
         if (!response.ok) {
             let errorMessage = 'Failed to upload image';
+            let errorData: Record<string, unknown> = {};
             
             try {
-                const errorData = await response.json();
-                errorMessage = errorData.message || `Error ${response.status}: ${response.statusText}`;
-            } catch (e) {
-                errorMessage = `Error ${response.status}: ${response.statusText}`;
+                // Try to parse error response as JSON
+                errorData = await response.json();
+                errorMessage = (errorData.message as string) || `Error ${response.status}: ${response.statusText}`;
+            } catch {
+                // If not JSON, get text
+                try {
+                    errorMessage = await response.text();
+                } catch {
+                    errorMessage = `Error ${response.status}: ${response.statusText}`;
+                }
             }
             
-            throw new Error(errorMessage);
+            const error = new Error(errorMessage);
+            const enhancedError = error as unknown as Record<string, unknown>;
+            enhancedError.status = response.status;
+            enhancedError.data = errorData;
+            
+            throw enhancedError;
         }
         
         const data = await response.json();
@@ -54,14 +75,20 @@ export const uploadImage = async (file: File, productId?: number): Promise<strin
         
         return data.url;
     } catch (error) {
+        // Convert error to a properly typed object
+        const enhancedError = (error instanceof Error ? 
+            { ...error, message: error.message } : 
+            error) as Record<string, unknown>;
+            
         // Log the error
         console.error('Image upload error:', {
             fileName: file.name,
             fileSize: file.size,
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: enhancedError.message || 'Unknown error',
+            status: 'status' in enhancedError ? enhancedError.status : undefined,
             timestamp: new Date().toISOString()
         });
         
-        throw error;
+        throw enhancedError;
     }
 };

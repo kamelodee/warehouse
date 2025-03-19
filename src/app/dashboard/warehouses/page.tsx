@@ -22,7 +22,8 @@ const Warehouses = () => {
     const [sort, setSort] = useState<string>('ASC');
     const [sortField, setSortField] = useState<string>('id');
     const [totalPages, setTotalPages] = useState<number>(0);
-    const [totalElements, setTotalElements] = useState<number>(0);
+    // Total elements used for internal calculations
+    const [_totalElements, setTotalElements] = useState<number>(0);
 
     useEffect(() => {
         const storedToken = sessionStorage.getItem('accessToken');

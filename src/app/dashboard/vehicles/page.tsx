@@ -3,9 +3,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { searchVehicles, Vehicle, deleteVehicle } from '../../api/vehicleService';
 import AddVehicle from './AddVehicle';
 
-// Use the Vehicle interface from vehicleService but ensure id is required
+// Use the Vehicle interface from vehicleService but ensure id is required and add additional properties
 interface VehicleWithRequiredId extends Omit<Vehicle, 'id'> {
     id: number;
+    type?: string;
+    status?: string;
 }
 
 const Vehicles = () => {
@@ -22,7 +24,8 @@ const Vehicles = () => {
     const [sort, setSort] = useState<string>('ASC');
     const [sortField, setSortField] = useState<string>('id');
     const [totalPages, setTotalPages] = useState<number>(0);
-    const [totalElements, setTotalElements] = useState<number>(0);
+    // Total elements used for internal calculations
+    const [_totalElements, setTotalElements] = useState<number>(0); // eslint-disable-line @typescript-eslint/no-unused-vars
 
     useEffect(() => {
         const storedToken = sessionStorage.getItem('accessToken');
@@ -81,7 +84,7 @@ const Vehicles = () => {
                 // Show success message
                 const vehicleInfo = vehicles.find(v => v.id === id);
                 const vehicleName = vehicleInfo ? 
-                    `${vehicleInfo.registrationNumber} ${vehicleInfo.name ? `(${vehicleInfo.name})` : ''}` : 
+                    `${vehicleInfo.code} ${vehicleInfo.identificationNumber ? `(${vehicleInfo.identificationNumber})` : ''}` : 
                     `Vehicle #${id}`;
                 alert(`${vehicleName} has been deleted successfully.`);
             } catch (error) {
@@ -109,8 +112,8 @@ const Vehicles = () => {
         fetchVehicles(); // Refresh the vehicle list after adding a new vehicle
     };
 
-    // Format date to a more readable format
-    const formatDate = (dateString?: string) => {
+    // Format date to a more readable format (kept for future use)
+    const _formatDate = (dateString?: string) => { // eslint-disable-line @typescript-eslint/no-unused-vars
         if (!dateString) return 'N/A';
         const date = new Date(dateString);
         return date.toLocaleString();
@@ -147,8 +150,8 @@ const Vehicles = () => {
                         className="border rounded p-1 text-black"
                     >
                         <option value="id">ID</option>
-                        <option value="name">Name</option>
-                        <option value="registrationNumber">Registration Number</option>
+                        <option value="identificationNumber">Identification Number</option>
+                        <option value="code">Code</option>
                         <option value="type">Type</option>
                         <option value="status">Status</option>
                     </select>
@@ -200,8 +203,8 @@ const Vehicles = () => {
                         <thead className="bg-gray-50">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registration Number</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Identification Number</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -212,8 +215,8 @@ const Vehicles = () => {
                                 vehicles.map((vehicle, index) => (
                                     <tr key={vehicle.id} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-gray-100' : ''}`}> 
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{vehicle.id}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{vehicle.registrationNumber}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{vehicle.name || 'N/A'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{vehicle.code}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{vehicle.identificationNumber || 'N/A'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{vehicle.type || 'N/A'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 

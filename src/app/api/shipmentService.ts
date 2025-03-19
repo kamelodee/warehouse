@@ -63,10 +63,15 @@ const getHeaders = (): HeadersInit => {
 /**
  * Log API errors with detailed information
  */
-const logApiError = (method: string, endpoint: string, error: any, additionalInfo?: any) => {
+const logApiError = (
+    method: string, 
+    endpoint: string, 
+    error: Record<string, unknown>, 
+    additionalInfo?: Record<string, unknown>
+) => {
     console.error(`API Error [${method} ${endpoint}]:`, {
         message: error.message || 'Unknown error',
-        status: error.status,
+        status: 'status' in error ? error.status : undefined,
         additionalInfo,
         timestamp: new Date().toISOString()
     });
@@ -84,27 +89,32 @@ const handleResponse = async <T>(response: Response, method: string, endpoint: s
             // Try to parse error response as JSON
             errorData = await response.json();
             errorMessage = errorData.message || `Error ${response.status}: ${response.statusText}`;
-        } catch (e) {
+        } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
             // If not JSON, get text
             try {
                 errorMessage = await response.text();
-            } catch (textError) {
+            } catch (_textError) { // eslint-disable-line @typescript-eslint/no-unused-vars
                 errorMessage = `Error ${response.status}: ${response.statusText}`;
             }
         }
         
         const error = new Error(errorMessage);
-        (error as any).status = response.status;
-        (error as any).data = errorData;
+        const enhancedError = error as unknown as Record<string, unknown>;
+        enhancedError.status = response.status;
+        enhancedError.data = errorData;
         
-        logApiError(method, endpoint, error, { status: response.status });
-        throw error;
+        logApiError(method, endpoint, enhancedError, { status: response.status });
+        throw enhancedError;
     }
     
     try {
         return await response.json() as T;
     } catch (error) {
-        logApiError(method, endpoint, error, { message: 'Failed to parse JSON response' });
+        const enhancedError = (error instanceof Error ? 
+            { ...error, message: error.message } : 
+            error) as Record<string, unknown>;
+        
+        logApiError(method, endpoint, enhancedError, { message: 'Failed to parse JSON response' });
         throw new Error('Failed to parse server response');
     }
 };
@@ -121,21 +131,22 @@ const handleResponseWithPossibleNoContent = async <T>(response: Response, method
             // Try to parse error response as JSON
             errorData = await response.json();
             errorMessage = errorData.message || `Error ${response.status}: ${response.statusText}`;
-        } catch (e) {
+        } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
             // If not JSON, get text
             try {
                 errorMessage = await response.text();
-            } catch (textError) {
+            } catch (_textError) { // eslint-disable-line @typescript-eslint/no-unused-vars
                 errorMessage = `Error ${response.status}: ${response.statusText}`;
             }
         }
         
         const error = new Error(errorMessage);
-        (error as any).status = response.status;
-        (error as any).data = errorData;
+        const enhancedError = error as unknown as Record<string, unknown>;
+        enhancedError.status = response.status;
+        enhancedError.data = errorData;
         
-        logApiError(method, endpoint, error, { status: response.status });
-        throw error;
+        logApiError(method, endpoint, enhancedError, { status: response.status });
+        throw enhancedError;
     }
     
     // For 204 No Content responses, return null
@@ -147,12 +158,16 @@ const handleResponseWithPossibleNoContent = async <T>(response: Response, method
     try {
         return await response.json() as T;
     } catch (error) {
+        const enhancedError = (error instanceof Error ? 
+            { ...error, message: error.message } : 
+            error) as Record<string, unknown>;
+        
         // For DELETE operations, it's common to get no content even with 200 status
         if (method === 'DELETE') {
             return null;
         }
         
-        logApiError(method, endpoint, error, { message: 'Failed to parse JSON response' });
+        logApiError(method, endpoint, enhancedError, { message: 'Failed to parse JSON response' });
         throw new Error('Failed to parse server response');
     }
 };
@@ -165,9 +180,12 @@ export const searchShipments = async (params: ShipmentSearchParams = {}): Promis
     const token = getToken();
     
     if (!token) {
-        const error = new Error('Authentication token not found');
-        logApiError('POST', '/shipments/search', error);
-        throw error;
+        const errorMessage = 'Authentication token not found';
+        const error = new Error(errorMessage);
+        const enhancedError = error as unknown as Record<string, unknown>;
+        
+        logApiError('POST', '/shipments/search', enhancedError);
+        throw enhancedError;
     }
     
     try {
@@ -182,11 +200,19 @@ export const searchShipments = async (params: ShipmentSearchParams = {}): Promis
         
         return handleResponse<ShipmentSearchResponse>(response, 'POST', '/shipments/search');
     } catch (error) {
-        if (!(error instanceof Error && (error as any).status)) {
-            // Only log network or other errors not already logged by handleResponse
-            logApiError('POST', '/shipments/search', error, { params });
-        }
-        throw error;
+        const enhancedError = (error instanceof Error ? 
+            { ...error, message: error.message } : 
+            error) as Record<string, unknown>;
+        
+        logApiError('POST', '/shipments/search', enhancedError, {
+            page,
+            size,
+            sort,
+            sortField,
+            timestamp: new Date().toISOString()
+        });
+        
+        throw enhancedError;
     }
 };
 
@@ -198,9 +224,12 @@ export const getShipment = async (id: number): Promise<Shipment> => {
     const endpoint = `/shipments/${id}`;
     
     if (!token) {
-        const error = new Error('Authentication token not found');
-        logApiError('GET', endpoint, error);
-        throw error;
+        const errorMessage = 'Authentication token not found';
+        const error = new Error(errorMessage);
+        const enhancedError = error as unknown as Record<string, unknown>;
+        
+        logApiError('GET', endpoint, enhancedError);
+        throw enhancedError;
     }
     
     try {
@@ -211,10 +240,12 @@ export const getShipment = async (id: number): Promise<Shipment> => {
         
         return handleResponse<Shipment>(response, 'GET', endpoint);
     } catch (error) {
-        if (!(error instanceof Error && (error as any).status)) {
-            logApiError('GET', endpoint, error);
-        }
-        throw error;
+        const enhancedError = (error instanceof Error ? 
+            { ...error, message: error.message } : 
+            error) as Record<string, unknown>;
+        
+        logApiError('GET', endpoint, enhancedError);
+        throw enhancedError;
     }
 };
 
@@ -226,9 +257,12 @@ export const createShipment = async (shipment: Shipment): Promise<Shipment> => {
     const endpoint = '/shipments';
     
     if (!token) {
-        const error = new Error('Authentication token not found');
-        logApiError('POST', endpoint, error);
-        throw error;
+        const errorMessage = 'Authentication token not found';
+        const error = new Error(errorMessage);
+        const enhancedError = error as unknown as Record<string, unknown>;
+        
+        logApiError('POST', endpoint, enhancedError);
+        throw enhancedError;
     }
     
     try {
@@ -240,10 +274,16 @@ export const createShipment = async (shipment: Shipment): Promise<Shipment> => {
         
         return handleResponse<Shipment>(response, 'POST', endpoint);
     } catch (error) {
-        if (!(error instanceof Error && (error as any).status)) {
-            logApiError('POST', endpoint, error, { shipmentData: shipment });
-        }
-        throw error;
+        const enhancedError = (error instanceof Error ? 
+            { ...error, message: error.message } : 
+            error) as Record<string, unknown>;
+        
+        logApiError('POST', endpoint, enhancedError, { 
+            shipmentData: shipment,
+            timestamp: new Date().toISOString()
+        });
+        
+        throw enhancedError;
     }
 };
 
@@ -255,9 +295,12 @@ export const updateShipment = async (id: number, shipment: Shipment): Promise<Sh
     const endpoint = `/shipments/${id}`;
     
     if (!token) {
-        const error = new Error('Authentication token not found');
-        logApiError('PUT', endpoint, error);
-        throw error;
+        const errorMessage = 'Authentication token not found';
+        const error = new Error(errorMessage);
+        const enhancedError = error as unknown as Record<string, unknown>;
+        
+        logApiError('PUT', endpoint, enhancedError);
+        throw enhancedError;
     }
     
     try {
@@ -269,10 +312,17 @@ export const updateShipment = async (id: number, shipment: Shipment): Promise<Sh
         
         return handleResponse<Shipment>(response, 'PUT', endpoint);
     } catch (error) {
-        if (!(error instanceof Error && (error as any).status)) {
-            logApiError('PUT', endpoint, error, { shipmentData: shipment });
-        }
-        throw error;
+        const enhancedError = (error instanceof Error ? 
+            { ...error, message: error.message } : 
+            error) as Record<string, unknown>;
+        
+        logApiError('PUT', endpoint, enhancedError, { 
+            shipmentId: id,
+            shipmentData: shipment,
+            timestamp: new Date().toISOString()
+        });
+        
+        throw enhancedError;
     }
 };
 
@@ -284,9 +334,12 @@ export const deleteShipment = async (id: number): Promise<void> => {
     const endpoint = `/shipments/${id}`;
     
     if (!token) {
-        const error = new Error('Authentication token not found');
-        logApiError('DELETE', endpoint, error);
-        throw error;
+        const errorMessage = 'Authentication token not found';
+        const error = new Error(errorMessage);
+        const enhancedError = error as unknown as Record<string, unknown>;
+        
+        logApiError('DELETE', endpoint, enhancedError);
+        throw enhancedError;
     }
     
     try {
@@ -298,17 +351,26 @@ export const deleteShipment = async (id: number): Promise<void> => {
         // For DELETE operations, we don't expect content in the response
         await handleResponseWithPossibleNoContent<void>(response, 'DELETE', endpoint);
     } catch (error) {
-        if (!(error instanceof Error && (error as any).status)) {
-            logApiError('DELETE', endpoint, error);
-        }
-        throw error;
+        const enhancedError = (error instanceof Error ? 
+            { ...error, message: error.message } : 
+            error) as Record<string, unknown>;
+        
+        logApiError('DELETE', endpoint, enhancedError, {
+            shipmentId: id,
+            timestamp: new Date().toISOString()
+        });
+        
+        throw enhancedError;
     }
 };
 
-export default {
+// Create a named export object to avoid anonymous default export
+const shipmentService = {
     searchShipments,
     getShipment,
     createShipment,
     updateShipment,
     deleteShipment
 };
+
+export default shipmentService;

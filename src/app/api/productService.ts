@@ -45,10 +45,15 @@ const getHeaders = (): HeadersInit => {
 /**
  * Log API errors with detailed information
  */
-const logApiError = (method: string, endpoint: string, error: any, additionalInfo?: any) => {
+const logApiError = (
+    method: string, 
+    endpoint: string, 
+    error: Record<string, unknown>, 
+    additionalInfo?: Record<string, unknown>
+) => {
     console.error(`API Error [${method} ${endpoint}]:`, {
         message: error.message || 'Unknown error',
-        status: error.status,
+        status: 'status' in error ? error.status : undefined,
         additionalInfo,
         timestamp: new Date().toISOString()
     });
@@ -66,28 +71,34 @@ const handleResponse = async <T>(response: Response, method: string, endpoint: s
             // Try to parse error response as JSON
             errorData = await response.json();
             errorMessage = errorData.message || `Error ${response.status}: ${response.statusText}`;
-        } catch (e) {
+        } catch {
             // If not JSON, get text
             try {
                 errorMessage = await response.text();
-            } catch (textError) {
+            } catch {
                 errorMessage = `Error ${response.status}: ${response.statusText}`;
             }
         }
         
         const error = new Error(errorMessage);
-        (error as any).status = response.status;
-        (error as any).data = errorData;
+        // Add custom properties to the error object
+        const enhancedError = error as unknown as Record<string, unknown>;
+        enhancedError.status = response.status;
+        enhancedError.data = errorData;
         
-        logApiError(method, endpoint, error, { status: response.status });
-        throw error;
+        logApiError(method, endpoint, enhancedError, { status: response.status });
+        throw enhancedError;
     }
     
     try {
         return await response.json() as T;
     } catch (error) {
-        logApiError(method, endpoint, error, { message: 'Failed to parse JSON response' });
-        throw new Error('Failed to parse server response');
+        const enhancedError = (error instanceof Error ? 
+            { ...error, message: error.message } : 
+            error) as Record<string, unknown>;
+        
+        logApiError(method, endpoint, enhancedError, { message: 'Failed to parse JSON response' });
+        throw enhancedError;
     }
 };
 
@@ -103,21 +114,23 @@ const handleResponseWithPossibleNoContent = async <T>(response: Response, method
             // Try to parse error response as JSON
             errorData = await response.json();
             errorMessage = errorData.message || `Error ${response.status}: ${response.statusText}`;
-        } catch (e) {
+        } catch {
             // If not JSON, get text
             try {
                 errorMessage = await response.text();
-            } catch (textError) {
+            } catch {
                 errorMessage = `Error ${response.status}: ${response.statusText}`;
             }
         }
         
         const error = new Error(errorMessage);
-        (error as any).status = response.status;
-        (error as any).data = errorData;
+        // Add custom properties to the error object
+        const enhancedError = error as unknown as Record<string, unknown>;
+        enhancedError.status = response.status;
+        enhancedError.data = errorData;
         
-        logApiError(method, endpoint, error, { status: response.status });
-        throw error;
+        logApiError(method, endpoint, enhancedError, { status: response.status });
+        throw enhancedError;
     }
     
     // For 204 No Content responses, return null
@@ -129,13 +142,17 @@ const handleResponseWithPossibleNoContent = async <T>(response: Response, method
     try {
         return await response.json() as T;
     } catch (error) {
+        const enhancedError = (error instanceof Error ? 
+            { ...error, message: error.message } : 
+            error) as Record<string, unknown>;
+        
         // For DELETE operations, it's common to get no content even with 200 status
         if (method === 'DELETE') {
             return null;
         }
         
-        logApiError(method, endpoint, error, { message: 'Failed to parse JSON response' });
-        throw new Error('Failed to parse server response');
+        logApiError(method, endpoint, enhancedError, { message: 'Failed to parse JSON response' });
+        throw enhancedError;
     }
 };
 
@@ -147,9 +164,12 @@ export const searchProducts = async (params: ProductSearchParams = {}): Promise<
     const token = getToken();
     
     if (!token) {
-        const error = new Error('Authentication token not found');
-        logApiError('POST', '/products/search', error);
-        throw error;
+        const errorMessage = 'Authentication token not found';
+        const error = new Error(errorMessage);
+        const enhancedError = error as unknown as Record<string, unknown>;
+        
+        logApiError('POST', '/products/search', enhancedError, { params });
+        throw enhancedError;
     }
     
     try {
@@ -164,11 +184,19 @@ export const searchProducts = async (params: ProductSearchParams = {}): Promise<
         
         return handleResponse<ProductSearchResponse>(response, 'POST', '/products/search');
     } catch (error) {
-        if (!(error instanceof Error && (error as any).status)) {
-            // Only log network or other errors not already logged by handleResponse
-            logApiError('POST', '/products/search', error, { params });
-        }
-        throw error;
+        const enhancedError = (error instanceof Error ? 
+            { ...error, message: error.message } : 
+            error) as Record<string, unknown>;
+        
+        logApiError('POST', '/products/search', enhancedError, {
+            page,
+            size,
+            sort,
+            sortField,
+            timestamp: new Date().toISOString()
+        });
+        
+        throw enhancedError;
     }
 };
 
@@ -180,9 +208,12 @@ export const getProduct = async (id: number): Promise<Product> => {
     const endpoint = `/products/${id}`;
     
     if (!token) {
-        const error = new Error('Authentication token not found');
-        logApiError('GET', endpoint, error);
-        throw error;
+        const errorMessage = 'Authentication token not found';
+        const error = new Error(errorMessage);
+        const enhancedError = error as unknown as Record<string, unknown>;
+        
+        logApiError('GET', endpoint, enhancedError);
+        throw enhancedError;
     }
     
     try {
@@ -193,10 +224,16 @@ export const getProduct = async (id: number): Promise<Product> => {
         
         return handleResponse<Product>(response, 'GET', endpoint);
     } catch (error) {
-        if (!(error instanceof Error && (error as any).status)) {
-            logApiError('GET', endpoint, error);
-        }
-        throw error;
+        const enhancedError = (error instanceof Error ? 
+            { ...error, message: error.message } : 
+            error) as Record<string, unknown>;
+        
+        logApiError('GET', endpoint, enhancedError, {
+            productId: id,
+            timestamp: new Date().toISOString()
+        });
+        
+        throw enhancedError;
     }
 };
 
@@ -208,9 +245,12 @@ export const createProduct = async (product: Product): Promise<Product> => {
     const endpoint = '/products';
     
     if (!token) {
-        const error = new Error('Authentication token not found');
-        logApiError('POST', endpoint, error);
-        throw error;
+        const errorMessage = 'Authentication token not found';
+        const error = new Error(errorMessage);
+        const enhancedError = error as unknown as Record<string, unknown>;
+        
+        logApiError('POST', endpoint, enhancedError);
+        throw enhancedError;
     }
     
     try {
@@ -222,10 +262,16 @@ export const createProduct = async (product: Product): Promise<Product> => {
         
         return handleResponse<Product>(response, 'POST', endpoint);
     } catch (error) {
-        if (!(error instanceof Error && (error as any).status)) {
-            logApiError('POST', endpoint, error, { productData: product });
-        }
-        throw error;
+        const enhancedError = (error instanceof Error ? 
+            { ...error, message: error.message } : 
+            error) as Record<string, unknown>;
+        
+        logApiError('POST', endpoint, enhancedError, {
+            productData: product,
+            timestamp: new Date().toISOString()
+        });
+        
+        throw enhancedError;
     }
 };
 
@@ -237,9 +283,12 @@ export const updateProduct = async (id: number, product: Product): Promise<Produ
     const endpoint = `/products/${id}`;
     
     if (!token) {
-        const error = new Error('Authentication token not found');
-        logApiError('PUT', endpoint, error);
-        throw error;
+        const errorMessage = 'Authentication token not found';
+        const error = new Error(errorMessage);
+        const enhancedError = error as unknown as Record<string, unknown>;
+        
+        logApiError('PUT', endpoint, enhancedError);
+        throw enhancedError;
     }
     
     try {
@@ -251,10 +300,17 @@ export const updateProduct = async (id: number, product: Product): Promise<Produ
         
         return handleResponse<Product>(response, 'PUT', endpoint);
     } catch (error) {
-        if (!(error instanceof Error && (error as any).status)) {
-            logApiError('PUT', endpoint, error, { productData: product });
-        }
-        throw error;
+        const enhancedError = (error instanceof Error ? 
+            { ...error, message: error.message } : 
+            error) as Record<string, unknown>;
+        
+        logApiError('PUT', endpoint, enhancedError, {
+            productId: id,
+            productData: product,
+            timestamp: new Date().toISOString()
+        });
+        
+        throw enhancedError;
     }
 };
 
@@ -266,9 +322,12 @@ export const deleteProduct = async (id: number): Promise<void> => {
     const endpoint = `/products/${id}`;
     
     if (!token) {
-        const error = new Error('Authentication token not found');
-        logApiError('DELETE', endpoint, error);
-        throw error;
+        const errorMessage = 'Authentication token not found';
+        const error = new Error(errorMessage);
+        const enhancedError = error as unknown as Record<string, unknown>;
+        
+        logApiError('DELETE', endpoint, enhancedError);
+        throw enhancedError;
     }
     
     try {
@@ -286,27 +345,15 @@ export const deleteProduct = async (id: number): Promise<void> => {
         // Log successful deletion
         console.info(`Successfully deleted product with ID: ${id} at ${new Date().toISOString()}`);
     } catch (error) {
-        // Enhance error with additional context
-        const enhancedError = error instanceof Error 
-            ? error 
-            : new Error('Unknown error during product deletion');
-            
-        if (!(enhancedError as any).status) {
-            (enhancedError as any).status = 500;
-        }
+        const enhancedError = (error instanceof Error ? 
+            { ...error, message: error.message } : 
+            error) as Record<string, unknown>;
         
-        // Add operation context to the error
-        (enhancedError as any).operation = 'deleteProduct';
-        (enhancedError as any).productId = id;
-        
-        // Log the error with detailed information
-        logApiError('DELETE', endpoint, enhancedError, { 
+        logApiError('DELETE', endpoint, enhancedError, {
             productId: id,
-            timestamp: new Date().toISOString(),
-            attemptDetails: 'Product deletion operation failed'
+            timestamp: new Date().toISOString()
         });
         
-        // Rethrow with enhanced information
         throw enhancedError;
     }
 };
@@ -320,7 +367,12 @@ export const createBatchProducts = async (products: Partial<Product>[]): Promise
     const token = sessionStorage.getItem('accessToken');
     
     if (!token) {
-        throw new Error('Authentication token not found');
+        const errorMessage = 'Authentication token not found';
+        const error = new Error(errorMessage);
+        const enhancedError = error as unknown as Record<string, unknown>;
+        
+        logApiError('POST', '/products/batch', enhancedError);
+        throw enhancedError;
     }
     
     try {
@@ -343,11 +395,20 @@ export const createBatchProducts = async (products: Partial<Product>[]): Promise
             try {
                 const errorData = await response.json();
                 errorMessage = errorData.message || `Error ${response.status}: ${response.statusText}`;
-            } catch (e) {
+            } catch {
                 errorMessage = `Error ${response.status}: ${response.statusText}`;
             }
             
-            throw new Error(errorMessage);
+            const error = new Error(errorMessage);
+            const enhancedError = error as unknown as Record<string, unknown>;
+            enhancedError.status = response.status;
+            
+            logApiError('POST', '/products/batch', enhancedError, {
+                productsCount: products.length,
+                timestamp: new Date().toISOString()
+            });
+            
+            throw enhancedError;
         }
         
         const data = await response.json();
@@ -357,13 +418,15 @@ export const createBatchProducts = async (products: Partial<Product>[]): Promise
         
         return data;
     } catch (error) {
-        // Log the error
-        console.error('Product batch creation error:', {
+        const enhancedError = (error instanceof Error ? 
+            { ...error, message: error.message } : 
+            error) as Record<string, unknown>;
+        
+        logApiError('POST', '/products/batch', enhancedError, {
             productsCount: products.length,
-            error: error instanceof Error ? error.message : 'Unknown error',
             timestamp: new Date().toISOString()
         });
         
-        throw error;
+        throw enhancedError;
     }
 };

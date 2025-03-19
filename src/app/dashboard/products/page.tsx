@@ -29,7 +29,9 @@ const Products = () => {
     const [sort, setSort] = useState<string>('ASC');
     const [sortField, setSortField] = useState<string>('name');
     const [totalPages, setTotalPages] = useState<number>(0);
-    const [totalElements, setTotalElements] = useState<number>(0);
+    // Total elements used for internal calculations
+    const [_totalElements, setTotalElements] = useState<number>(0); // eslint-disable-line @typescript-eslint/no-unused-vars
+    // Kept for potential future use in pagination calculations
 
     useEffect(() => {
         const storedToken = sessionStorage.getItem('accessToken');

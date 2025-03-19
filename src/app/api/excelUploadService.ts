@@ -28,18 +28,22 @@ export const parseExcelFile = (file: File): Promise<Partial<Product>[]> => {
                 const jsonData = XLSX.utils.sheet_to_json(worksheet);
                 
                 // Map Excel columns to product properties
-                const products = jsonData.map((row: any) => {
+                const products = jsonData.map((row: unknown) => {
+                    const typedRow = row as Record<string, unknown>;
                     return {
-                        code: row['Code'] || row['code'] || '',
-                        name: row['Name'] || row['name'] || '',
-                        barcode: row['Barcode'] || row['barcode'] || '',
-                        serialized: row['Serialized'] === 'Yes' || row['serialized'] === true || false
+                        code: (typedRow['Code'] || typedRow['code'] || '') as string,
+                        name: (typedRow['Name'] || typedRow['name'] || '') as string,
+                        barcode: (typedRow['Barcode'] || typedRow['barcode'] || '') as string,
+                        serialized: typedRow['Serialized'] === 'Yes' || typedRow['serialized'] === true || false
                     };
                 });
                 
                 resolve(products);
             } catch (error) {
-                console.error('Error parsing Excel file:', error);
+                console.error('Error parsing Excel file:', {
+                    error: error instanceof Error ? error.message : 'Unknown error',
+                    timestamp: new Date().toISOString()
+                });
                 reject(new Error(`Failed to parse Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`));
             }
         };
@@ -71,14 +75,14 @@ export const parseExcelFileEnhanced = async (file: File): Promise<Partial<Produc
         const worksheet = workbook.Sheets[firstSheetName];
         
         // Convert to JSON
-        const data = XLSX.utils.sheet_to_json<any>(worksheet);
+        const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
         
         // Map the data to products
         const products: Partial<Product>[] = data.map((row) => {
             // Handle different possible column names (case insensitive)
-            const code = row.Code || row.code || row.CODE || '';
-            const name = row.Name || row.name || row.NAME || '';
-            const barcode = row.Barcode || row.barcode || row.BARCODE || '';
+            const code = (row.Code || row.code || row.CODE || '') as string;
+            const name = (row.Name || row.name || row.NAME || '') as string;
+            const barcode = (row.Barcode || row.barcode || row.BARCODE || '') as string;
             
             // Handle serialized field (can be "Yes"/"No", "TRUE"/"FALSE", true/false, 1/0)
             let serialized = false;
@@ -111,7 +115,8 @@ export const parseExcelFileEnhanced = async (file: File): Promise<Partial<Produc
             timestamp: new Date().toISOString()
         });
         
-        throw new Error('Failed to parse Excel file');
+        const enhancedError = new Error('Failed to parse Excel file');
+        throw enhancedError;
     }
 };
 
@@ -245,12 +250,16 @@ export const uploadExcelFile = async (
                 const errorData = await response.json();
                 errorMessage = errorData.message || `Error ${response.status}: ${response.statusText}`;
                 errorDetails = errorData;
-            } catch (e) {
+            } catch {
                 errorMessage = `Error ${response.status}: ${response.statusText}`;
             }
             
             // Create a detailed error object
             const error = new Error(errorMessage);
+            const enhancedError = error as unknown as Record<string, unknown>;
+            enhancedError.status = response.status;
+            enhancedError.details = errorDetails;
+            enhancedError.fileName = file.name;
             
             // Log the error with context
             console.error('Excel upload API error', {
@@ -263,7 +272,7 @@ export const uploadExcelFile = async (
                 timestamp: new Date().toISOString()
             });
             
-            throw error;
+            throw enhancedError;
         }
         
         const data = await response.json();
@@ -284,15 +293,19 @@ export const uploadExcelFile = async (
         return data;
     } catch (error) {
         // Create an enhanced error with context
-        const enhancedError = error instanceof Error ? error : new Error('Unknown error during Excel upload');
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error during Excel upload';
+        const enhancedError = new Error(errorMessage) as unknown as Record<string, unknown>;
+        enhancedError.fileName = file.name;
+        enhancedError.fileSize = file.size;
+        enhancedError.fileType = file.type;
         
         // Log the error with detailed context
         console.error('Excel file upload error', {
             fileName: file.name,
             fileSize: file.size,
             fileType: file.type,
-            error: enhancedError.message,
-            stack: enhancedError.stack,
+            error: errorMessage,
+            stack: error instanceof Error ? error.stack : undefined,
             timestamp: new Date().toISOString()
         });
         

@@ -237,7 +237,7 @@ const AddShipment = ({ isOpen, onClose, onShipmentAdded }: AddShipmentProps) => 
             }
         } catch (error) {
             console.error('Error adding shipment:', error);
-            
+            console.log(payload)
             // Log detailed error information
             console.error('Add shipment error details:', {
                 shipmentData: payload,

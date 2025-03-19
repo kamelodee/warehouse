@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface User {
   id: number;
@@ -32,7 +32,7 @@ interface ApiResponse {
   timestamp: string;
   message: string;
   debugMessage: string | null;
-  subErrors: any | null;
+  subErrors: Record<string, unknown> | null;
 }
 
 interface PaginatedResponse {
@@ -139,17 +139,8 @@ export default function Users() {
     return errorMessage;
   };
 
-  useEffect(() => {
-    const storedToken = sessionStorage.getItem('accessToken');
-    setToken(storedToken);
-
-    // Fetch users when component mounts
-    fetchUsers();
-    // Fetch warehouses when component mounts
-    fetchWarehouses();
-  }, []);
-
-  const fetchUsers = async (page = 0) => {
+  // Define fetchUsers and fetchWarehouses functions before using them in useEffect
+  const fetchUsers = useCallback(async (page = 0) => {
     console.log(`Starting user fetching process for page ${page}`);
     setIsLoadingUsers(true);
     setUsersFetchError(null);
@@ -239,10 +230,9 @@ export default function Users() {
       setIsLoadingUsers(false);
       console.log('User fetching process completed');
     }
-  };
+  }, []);
 
-  const fetchWarehouses = async () => {
-    console.log('Starting warehouse fetching process');
+  const fetchWarehouses = useCallback(async () => {
     setIsLoadingWarehouses(true);
     setWarehousesFetchError(null);
 
@@ -378,7 +368,17 @@ export default function Users() {
       setIsLoadingWarehouses(false);
       console.log('Warehouse fetching process completed');
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const storedToken = sessionStorage.getItem('accessToken');
+    setToken(storedToken);
+
+    // Fetch users when component mounts
+    fetchUsers();
+    // Fetch warehouses when component mounts
+    fetchWarehouses();
+  }, [fetchUsers, fetchWarehouses]);
 
   // Function to handle page change
   const handlePageChange = (page: number) => {
@@ -716,7 +716,7 @@ export default function Users() {
       }
 
       // Prepare payload with only the required fields for the API
-      const payload: any = {
+      const payload: Record<string, string | number> = {
         firstName: editUser.firstName,
         lastName: editUser.lastName,
         email: editUser.email,
@@ -1135,7 +1135,7 @@ export default function Users() {
           <div className="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div className="mt-3 text-center">
               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                <svg className="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
