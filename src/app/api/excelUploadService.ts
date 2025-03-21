@@ -1,23 +1,31 @@
 // excelUploadService.ts - A utility service for Excel file upload operations
-import * as XLSX from 'xlsx';
 import { Product } from './productService';
+
+// Dynamically import XLSX only when needed
+const getXLSX = async () => {
+  const XLSX = await import('xlsx');
+  return XLSX;
+};
 
 /**
  * Parse an Excel file and convert it to an array of product objects
  * @param file The Excel file to parse
  * @returns An array of product objects
  */
-export const parseExcelFile = (file: File): Promise<Partial<Product>[]> => {
-    return new Promise((resolve, reject) => {
+export const parseExcelFile = async (file: File): Promise<Partial<Product>[]> => {
+    return new Promise(async (resolve, reject) => {
         const reader = new FileReader();
         
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 const data = e.target?.result;
                 if (!data) {
                     reject(new Error('Failed to read file'));
                     return;
                 }
+                
+                // Dynamically import XLSX
+                const XLSX = await getXLSX();
                 
                 // Parse the Excel file
                 const workbook = XLSX.read(data, { type: 'binary' });
@@ -52,71 +60,94 @@ export const parseExcelFile = (file: File): Promise<Partial<Product>[]> => {
             reject(new Error('Failed to read file'));
         };
         
-        // Read the file as binary
         reader.readAsBinaryString(file);
     });
 };
 
 /**
- * Parse an Excel file and return the products with enhanced error handling
+ * Parse an Excel file and return the products with enhanced error handling and validation
  * @param file The Excel file to parse
- * @returns Array of products from the Excel file
+ * @returns An array of product objects with validation results
  */
 export const parseExcelFileEnhanced = async (file: File): Promise<Partial<Product>[]> => {
     try {
+        // Dynamically import XLSX
+        const XLSX = await getXLSX();
+        
         // Read the file as an array buffer
         const arrayBuffer = await file.arrayBuffer();
         
         // Parse the Excel file
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        
-        // Get the first sheet
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        // Convert to JSON
-        const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
+        // Convert to JSON with headers
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
         
-        // Map the data to products
-        const products: Partial<Product>[] = data.map((row) => {
-            // Handle different possible column names (case insensitive)
-            const code = (row.Code || row.code || row.CODE || '') as string;
-            const name = (row.Name || row.name || row.NAME || '') as string;
-            const barcode = (row.Barcode || row.barcode || row.BARCODE || '') as string;
+        // Extract headers (first row)
+        const headers = jsonData[0] as string[];
+        const requiredHeaders = ['Code', 'Name'];
+        
+        // Validate headers
+        const missingHeaders = requiredHeaders.filter(
+            required => !headers.some(header => 
+                typeof header === 'string' && header.toLowerCase() === required.toLowerCase()
+            )
+        );
+        
+        if (missingHeaders.length > 0) {
+            throw new Error(`Missing required headers: ${missingHeaders.join(', ')}`);
+        }
+        
+        // Find column indices
+        const getColumnIndex = (name: string): number => {
+            return headers.findIndex(header => 
+                typeof header === 'string' && header.toLowerCase() === name.toLowerCase()
+            );
+        };
+        
+        const codeIndex = getColumnIndex('code');
+        const nameIndex = getColumnIndex('name');
+        const barcodeIndex = getColumnIndex('barcode');
+        const serializedIndex = getColumnIndex('serialized');
+        
+        // Map rows to products (skip header row)
+        const products: Partial<Product>[] = [];
+        for (let i = 1; i < jsonData.length; i++) {
+            const row = jsonData[i] as unknown[];
             
-            // Handle serialized field (can be "Yes"/"No", "TRUE"/"FALSE", true/false, 1/0)
-            let serialized = false;
-            const serializedValue = row.Serialized || row.serialized || row.SERIALIZED;
-            if (serializedValue !== undefined) {
-                if (typeof serializedValue === 'boolean') {
-                    serialized = serializedValue;
-                } else if (typeof serializedValue === 'number') {
-                    serialized = serializedValue === 1;
-                } else if (typeof serializedValue === 'string') {
-                    const value = serializedValue.toLowerCase();
-                    serialized = value === 'yes' || value === 'true' || value === '1';
-                }
+            // Skip empty rows
+            if (!row.length || (row.length === 1 && !row[0])) continue;
+            
+            const product: Partial<Product> = {};
+            
+            if (codeIndex >= 0 && row[codeIndex] !== undefined) {
+                product.code = String(row[codeIndex]);
             }
             
-            return {
-                code,
-                name,
-                barcode,
-                serialized
-            };
-        });
+            if (nameIndex >= 0 && row[nameIndex] !== undefined) {
+                product.name = String(row[nameIndex]);
+            }
+            
+            if (barcodeIndex >= 0 && row[barcodeIndex] !== undefined) {
+                product.barcode = String(row[barcodeIndex]);
+            }
+            
+            if (serializedIndex >= 0) {
+                const value = row[serializedIndex];
+                product.serialized = value === 'Yes' || value === true || value === 1;
+            } else {
+                product.serialized = true; // Default value
+            }
+            
+            products.push(product);
+        }
         
         return products;
     } catch (error) {
-        console.error('Error parsing Excel file', {
-            fileName: file.name,
-            fileSize: file.size,
-            error: error instanceof Error ? error.message : 'Unknown error',
-            timestamp: new Date().toISOString()
-        });
-        
-        const enhancedError = new Error('Failed to parse Excel file');
-        throw enhancedError;
+        console.error('Error parsing Excel file:', error);
+        throw new Error(`Failed to parse Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 };
 
@@ -127,12 +158,25 @@ export const parseExcelFileEnhanced = async (file: File): Promise<Partial<Produc
  */
 export const getProductCountFromExcel = async (file: File): Promise<number> => {
     try {
+        // Dynamically import XLSX
+        const XLSX = await getXLSX();
+        
+        // Read the file as an array buffer
+        const arrayBuffer = await file.arrayBuffer();
+        
         // Parse the Excel file
-        const products = await parseExcelFileEnhanced(file);
-        return products.length;
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Convert to JSON with headers
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        // Count non-empty rows (excluding header)
+        return jsonData.slice(1).filter(row => row && Array.isArray(row) && row.length > 0).length;
     } catch (error) {
         console.error('Error counting products in Excel file:', error);
-        throw error;
+        throw new Error(`Failed to count products: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 };
 
@@ -147,6 +191,9 @@ export const uploadProducts = async (
     onProgress?: (progress: number) => void
 ): Promise<Partial<Product>[]> => {
     try {
+        // Dynamically import XLSX
+        const XLSX = await getXLSX();
+        
         // Log the upload attempt
         console.info(`Attempting to upload ${products.length} products from Excel at ${new Date().toISOString()}`);
         
@@ -206,6 +253,9 @@ export const uploadExcelFile = async (
     }
     
     try {
+        // Dynamically import XLSX
+        const XLSX = await getXLSX();
+        
         // Log the upload attempt with detailed information
         console.info('Excel upload attempt', {
             fileName: file.name,
