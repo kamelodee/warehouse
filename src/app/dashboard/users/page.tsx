@@ -164,7 +164,7 @@ export default function Users() {
 
       console.log('Sending user search payload:', payload);
 
-      const response = await fetch('http://stock.hisense.com.gh/api/v1.0/users/search', {
+      const response = await fetch('https://stock.hisense.com.gh/api/v1.0/users/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -255,7 +255,7 @@ export default function Users() {
 
       console.log('Sending warehouse search payload:', payload);
 
-      const response = await fetch('http://stock.hisense.com.gh/api/v1.0/warehouses/search', {
+      const response = await fetch('https://stock.hisense.com.gh/api/v1.0/warehouses/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -455,7 +455,7 @@ export default function Users() {
       });
 
       // Make API call to the specified endpoint for user creation with warehouse
-      const response = await fetch('http://stock.hisense.com.gh/api/v1.0/users/warehouse', {
+      const response = await fetch('https://stock.hisense.com.gh/api/v1.0/users/warehouse', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -531,9 +531,9 @@ export default function Users() {
         throw new Error('Authentication token is missing');
       }
 
-      console.log(`Sending DELETE request to: http://stock.hisense.com.gh/api/v1.0/users/${userId}`);
+      console.log(`Sending DELETE request to: https://stock.hisense.com.gh/api/v1.0/users/${userId}`);
 
-      const response = await fetch(`http://stock.hisense.com.gh/api/v1.0/users/${userId}`, {
+      const response = await fetch(`https://stock.hisense.com.gh/api/v1.0/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -622,9 +622,9 @@ export default function Users() {
         throw new Error('Authentication token is missing');
       }
 
-      console.log(`Sending GET request to: http://stock.hisense.com.gh/api/v1.0/users/${userId}`);
+      console.log(`Sending GET request to: https://stock.hisense.com.gh/api/v1.0/users/${userId}`);
 
-      const response = await fetch(`http://stock.hisense.com.gh/api/v1.0/users/${userId}`, {
+      const response = await fetch(`https://stock.hisense.com.gh/api/v1.0/users/${userId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -737,7 +737,7 @@ export default function Users() {
       });
 
       // Make API call to update the user
-      const response = await fetch(`http://stock.hisense.com.gh/api/v1.0/users/${editUser.id}`, {
+      const response = await fetch(`https://stock.hisense.com.gh/api/v1.0/users/${editUser.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1185,7 +1185,7 @@ export default function Users() {
 
       {/* Add User Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900">Add New User</h2>
@@ -1367,7 +1367,7 @@ export default function Users() {
       
       {/* Edit User Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900">Edit User</h2>

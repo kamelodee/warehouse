@@ -35,7 +35,7 @@ export const uploadImage = async (file: File, productId?: number): Promise<strin
         console.info(`Attempting to upload image: ${file.name} (${file.size} bytes) at ${new Date().toISOString()}`);
         
         // Send the request to the API
-        const response = await fetch('http://stock.hisense.com.gh/api/v1.0/images/upload', {
+        const response = await fetch('https://stock.hisense.com.gh/api/v1.0/images/upload', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`

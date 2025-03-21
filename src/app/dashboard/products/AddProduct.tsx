@@ -75,13 +75,27 @@ const AddProduct = ({ isOpen, onClose, onProductAdded }: AddProductProps) => {
         setUploadError(null);
 
         try {
+            // Validate form data
+            if (!code.trim()) {
+                throw new Error("Product code is required");
+            }
+            if (!name.trim()) {
+                throw new Error("Product name is required");
+            }
+            if (!barcode.trim()) {
+                throw new Error("Barcode is required");
+            }
+
             // Create product first
             const payload: Product = {
-                code,
-                name,
-                barcode,
+                code: code.trim(),
+                name: name.trim(),
+                barcode: barcode.trim(),
                 serialized
             };
+
+            // Log the payload for debugging
+            console.log('Submitting product with payload:', payload);
 
             // If there's an image, upload it first
             if (image) {
@@ -114,7 +128,7 @@ const AddProduct = ({ isOpen, onClose, onProductAdded }: AddProductProps) => {
             }
         } catch (error) {
             console.error('Error adding product:', error);
-            alert('Error adding product: ' + (error as Error).message);
+            alert('Error adding product: ' + (error instanceof Error ? error.message : 'Unknown error'));
         } finally {
             setIsLoading(false);
         }

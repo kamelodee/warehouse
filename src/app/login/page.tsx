@@ -14,7 +14,7 @@ export default function LoginPage() {
   const handleLogin = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://stock.hisense.com.gh/api/v1.0/auth', {
+      const response = await fetch('https://stock.hisense.com.gh/api/v1.0/auth', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -28,15 +28,37 @@ const nextConfig: NextConfig = {
   
   // Optimize image handling
   images: {
-    domains: ['localhost'],
+    domains: ['localhost', 'stock.hisense.com.gh'],
     formats: ['image/avif', 'image/webp'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'stock.hisense.com.gh',
+        pathname: '/**',
+      },
+    ],
   },
   
-  // Optimize output for production
-  output: 'standalone',
+  // Remove standalone output for standard deployment
+  // output: 'standalone',
   
   // Add compression
   compress: true,
+  
+  // Allow mixed content (HTTP content in HTTPS page)
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: "upgrade-insecure-requests"
+          }
+        ]
+      }
+    ];
+  }
 };
 
 export default nextConfig;

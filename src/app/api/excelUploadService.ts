@@ -279,7 +279,7 @@ export const uploadExcelFile = async (
         }
         
         // Send the request to the API
-        const response = await fetch('http://stock.hisense.com.gh/api/v1.0/products/upload', {
+        const response = await fetch('https://stock.hisense.com.gh/api/v1.0/products/upload', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`
