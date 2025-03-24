@@ -85,7 +85,7 @@ export default function Users() {
     email: '',
     phoneNumber: '',
     password: '',
-    confirmPassword: '', // Not sent to API but needed for validation
+    role: 'USER', // Default role
     warehouseId: 0
   });
 
@@ -397,112 +397,37 @@ export default function Users() {
       lastName: newUser.lastName,
       email: newUser.email,
       phoneNumber: newUser.phoneNumber,
+      role: newUser.role,
       hasPassword: !!newUser.password,
       passwordLength: newUser.password?.length || 0,
-      passwordsMatch: newUser.password === newUser.confirmPassword,
-      warehouseId: newUser.warehouseId
     });
 
-    if (!newUser.firstName) return 'First name is required';
-    if (!newUser.lastName) return 'Last name is required';
-    if (!newUser.email) return 'Email is required';
-    if (!newUser.phoneNumber) return 'Phone number is required';
-    if (!newUser.password) return 'Password is required';
-    if (newUser.password !== newUser.confirmPassword) return 'Passwords do not match';
-    if (newUser.password.length < 8) return 'Password must be at least 8 characters';
+    // Validate required fields
+    if (!newUser.firstName || !newUser.lastName) {
+      return 'First Name and Last Name are required';
+    }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newUser.email)) return 'Invalid email format';
+    if (!newUser.email) {
+      return 'Email is required';
+    }
 
-    // Basic phone number validation for Ghana
-    const phoneRegex = /^0[2-5][0-9]{8}$/;
-    if (!phoneRegex.test(newUser.phoneNumber)) return 'Invalid phone number format';
+    if (!newUser.phoneNumber) {
+      return 'Phone Number is required';
+    }
 
-    console.log('Form validation successful');
+    if (!newUser.role) {
+      return 'Role is required';
+    }
+
+    if (!newUser.password) {
+      return 'Password is required';
+    }
+
+    if (newUser.password.length < 8) {
+      return 'Password must be at least 8 characters long';
+    }
+
     return null;
-  };
-
-  const handleAddUser = async () => {
-    console.log('Starting user creation process');
-
-    // Validate form
-    const validationError = validateForm();
-    if (validationError) {
-      console.error('Form validation failed:', validationError);
-      setApiError(validationError);
-      return;
-    }
-
-    setIsLoading(true);
-    setApiError(null);
-
-    try {
-      // Prepare payload with only the required fields for the API
-      const payload = {
-        firstName: newUser.firstName,
-        lastName: newUser.lastName,
-        email: newUser.email,
-        phoneNumber: newUser.phoneNumber,
-        password: newUser.password,
-        warehouseId: newUser.warehouseId
-      };
-
-      console.log('Sending user creation payload:', {
-        ...payload,
-        password: '[REDACTED]', // Don't log actual password
-        warehouseDetails: warehouses.find(w => w.id === payload.warehouseId)
-      });
-
-      // Make API call to the specified endpoint for user creation with warehouse
-      const response = await fetch('https://stock.hisense.com.gh/api/v1.0/users/warehouse', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const data: ApiResponse = await response.json();
-      console.log('User creation API response status:', response.status, response.statusText);
-
-      if (response.ok) {
-        console.log('User created successfully:', {
-          status: data.status,
-          message: data.message
-        });
-
-        // Success - close modal and refresh user list
-        setShowAddModal(false);
-        resetForm();
-
-        // Show success message
-        alert('User created successfully!');
-
-        // Refresh the user list
-        fetchUsers(pagination.number);
-      } else {
-        // Handle API error
-        console.error('API Error during user creation:', {
-          status: response.status,
-          statusText: response.statusText,
-          apiResponse: data
-        });
-
-        // Use the utility function to format the error message
-        setApiError(formatApiError(data));
-      }
-    } catch (error) {
-      // Log the full error details
-      console.error('Exception during user creation:', error);
-
-      // Provide a user-friendly error message
-      setApiError('An unexpected error occurred. Please try again.');
-    } finally {
-      setIsLoading(false);
-      console.log('User creation process completed');
-    }
   };
 
   const resetForm = () => {
@@ -512,7 +437,7 @@ export default function Users() {
       email: '',
       phoneNumber: '',
       password: '',
-      confirmPassword: '',
+      role: 'USER',
       warehouseId: warehouses.length > 0 ? warehouses[0].id : 0
     });
     setApiError(null);
@@ -795,32 +720,33 @@ export default function Users() {
       lastName: editUser.lastName,
       email: editUser.email,
       phoneNumber: editUser.phoneNumber,
+      role: editUser.role,
       hasPassword: !!editUser.password,
       passwordLength: editUser.password?.length || 0,
-      passwordsMatch: editUser.password === editUser.confirmPassword,
-      warehouseId: editUser.warehouseId
     });
 
-    if (!editUser.firstName) return 'First name is required';
-    if (!editUser.lastName) return 'Last name is required';
-    if (!editUser.email) return 'Email is required';
-    if (!editUser.phoneNumber) return 'Phone number is required';
-
-    // Only validate password if it's being changed
-    if (editUser.password) {
-      if (editUser.password.length < 8) return 'Password must be at least 8 characters';
-      if (editUser.password !== editUser.confirmPassword) return 'Passwords do not match';
+    // Validate required fields
+    if (!editUser.firstName || !editUser.lastName) {
+      return 'First Name and Last Name are required';
     }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(editUser.email)) return 'Invalid email format';
+    if (!editUser.email) {
+      return 'Email is required';
+    }
 
-    // Basic phone number validation for Ghana
-    const phoneRegex = /^0[2-5][0-9]{8}$/;
-    if (!phoneRegex.test(editUser.phoneNumber)) return 'Invalid phone number format';
+    if (!editUser.phoneNumber) {
+      return 'Phone Number is required';
+    }
 
-    console.log('Edit form validation successful');
+    if (!editUser.role) {
+      return 'Role is required';
+    }
+
+    // Optional password validation - only check if password is provided
+    if (editUser.password && editUser.password.length < 8) {
+      return 'Password must be at least 8 characters long';
+    }
+
     return null;
   };
 
@@ -845,6 +771,90 @@ export default function Users() {
     console.log('Opening edit form for user ID:', userId);
     setUserToEdit(userId);
     fetchUserForEdit(userId);
+  };
+
+  const handleAddUser = async () => {
+    console.log('Starting user creation process');
+
+    // Validate form
+    const validationError = validateForm();
+    if (validationError) {
+      console.error('Form validation failed:', validationError);
+      setIsLoading(false);
+      setApiError(validationError);
+      return;
+    }
+
+    setIsLoading(true);
+    setApiError(null);
+
+    try {
+      // Prepare payload with only the required fields for the API
+      const payload = {
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        email: newUser.email,
+        phoneNumber: newUser.phoneNumber,
+        password: newUser.password,
+        role: newUser.role,
+        warehouseId: newUser.warehouseId
+      };
+
+      console.log('Sending user creation payload:', {
+        ...payload,
+        password: '[REDACTED]', // Don't log actual password
+        warehouseDetails: warehouses.find(w => w.id === payload.warehouseId)
+      });
+
+      // Make API call to the specified endpoint for user creation
+      const response = await fetch('https://stock.hisense.com.gh/api/v1.0/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data: ApiResponse = await response.json();
+      console.log('User creation API response status:', response.status, response.statusText);
+
+      if (response.ok) {
+        console.log('User created successfully:', {
+          status: data.status,
+          message: data.message
+        });
+
+        // Success - close modal and refresh user list
+        setShowAddModal(false);
+        resetForm();
+
+        // Show success message
+        alert('User created successfully!');
+
+        // Refresh the user list
+        fetchUsers(pagination.number);
+      } else {
+        // Handle API error
+        console.error('API Error during user creation:', {
+          status: response.status,
+          statusText: response.statusText,
+          apiResponse: data
+        });
+
+        // Use the utility function to format the error message
+        setApiError(formatApiError(data));
+      }
+    } catch (error) {
+      // Log the full error details
+      console.error('Exception during user creation:', error);
+
+      // Provide a user-friendly error message
+      setApiError('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
+      console.log('User creation process completed');
+    }
   };
 
   return (
@@ -1272,6 +1282,22 @@ export default function Users() {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Role*
+                </label>
+                <select
+                  value={newUser.role}
+                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base text-gray-900"
+                  required
+                >
+                  <option value="">Select Role</option>
+                  <option value="SUPER_ADMIN">Super Admin</option>
+                  <option value="WAREHOUSE_USER">Warehouse User</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Warehouse*
                 </label>
                 {isLoadingWarehouses ? (
@@ -1316,20 +1342,6 @@ export default function Users() {
                   type="password"
                   value={newUser.password}
                   onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base text-gray-900"
-                  placeholder="********"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirm Password*
-                </label>
-                <input
-                  type="password"
-                  value={newUser.confirmPassword}
-                  onChange={(e) => setNewUser({ ...newUser, confirmPassword: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base text-gray-900"
                   placeholder="********"
                   required

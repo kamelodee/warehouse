@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import { searchWarehouses, Warehouse, deleteWarehouse } from '../../api/warehouseService';
+import { searchWarehouses, Warehouse, deleteWarehouse, updateWarehouse } from '../../api/warehouseService';
 import AddWarehouse from './AddWarehouse';
 
 // Use the Warehouse interface from warehouseService but ensure id is required
@@ -15,7 +15,8 @@ const Warehouses = () => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [deletingWarehouseIds, setDeletingWarehouseIds] = useState<number[]>([]);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-   
+    const [selectedWarehouse, setSelectedWarehouse] = useState<WarehouseWithRequiredId | null>(null);
+    
     // State variables for pagination and sorting
     const [page, setPage] = useState<number>(0);
     const [size, setSize] = useState<number>(10);
@@ -103,8 +104,14 @@ const Warehouses = () => {
         }
     };
 
+    const handleEditWarehouse = (warehouse: WarehouseWithRequiredId) => {
+        setSelectedWarehouse(warehouse);
+        setIsModalOpen(true);
+    };
+
     const handleWarehouseAdded = () => {
         fetchWarehouses(); // Refresh the warehouse list after adding a new warehouse
+        setSelectedWarehouse(null); // Reset selected warehouse
     };
 
     // Format date to a more readable format
@@ -115,36 +122,40 @@ const Warehouses = () => {
     };
 
     return (
-        <div className="p-4">
-            <h1 className="text-black font-bold mb-4">Warehouses Management</h1>
-            <button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 text-white rounded p-2 mb-4">Add Warehouse</button>
+        <div className="p-4 bg-white min-h-screen">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Warehouses Management</h1>
+            <button onClick={() => {
+                setSelectedWarehouse(null);
+                setIsModalOpen(true);
+            }} className="bg-indigo-600 text-white rounded-md px-4 py-2 mb-4 hover:bg-indigo-700 transition-colors">Add Warehouse</button>
             {isModalOpen && (
                 <AddWarehouse 
                     isOpen={isModalOpen} 
                     onClose={() => setIsModalOpen(false)} 
                     onWarehouseAdded={handleWarehouseAdded} 
+                    existingWarehouse={selectedWarehouse || undefined}
                 />
             )}
             
             <div className="flex space-x-4 mb-4">
                 <div>
-                    <label htmlFor="size" className="border rounded p-1 text-black">Size:</label>
+                    <label htmlFor="size" className="block text-sm font-medium text-gray-700 mb-1">Size:</label>
                     <input
                         type="number"
                         id="size"
                         value={size}
                         onChange={(e) => setSize(Number(e.target.value))}
                         min="1"
-                        className="border rounded p-1 text-black"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     />
                 </div>
                 <div>
-                    <label htmlFor="sortField" className="border rounded p-1 text-black">Sort By:</label>
+                    <label htmlFor="sortField" className="block text-sm font-medium text-gray-700 mb-1">Sort By:</label>
                     <select
                         id="sortField"
                         value={sortField}
                         onChange={(e) => setSortField(e.target.value)}
-                        className="border rounded p-1 text-black"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     >
                         <option value="id">ID</option>
                         <option value="name">Name</option>
@@ -153,95 +164,93 @@ const Warehouses = () => {
                     </select>
                 </div>
                 <div>
-                    <label htmlFor="sort" className="border rounded p-1 text-black">Order:</label>
+                    <label htmlFor="sort" className="block text-sm font-medium text-gray-700 mb-1">Order:</label>
                     <select
                         id="sort"
                         value={sort}
                         onChange={(e) => setSort(e.target.value)}
-                        className="border rounded p-1 text-black"
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     >
                         <option value="ASC">Ascending</option>
                         <option value="DESC">Descending</option>
                     </select>
                 </div>
-                <button 
-                    onClick={fetchWarehouses} 
-                    disabled={isLoading}
-                    className="bg-indigo-600 text-white rounded p-1"
-                >
-                    {isLoading ? 'Loading...' : 'Apply Filters'}
-                </button>
+                <div className="flex items-end">
+                    <button 
+                        onClick={fetchWarehouses} 
+                        disabled={isLoading}
+                        className="bg-indigo-600 text-white rounded-md px-4 py-2 hover:bg-indigo-700 transition-colors disabled:bg-indigo-300"
+                    >
+                        {isLoading ? 'Loading...' : 'Apply Filters'}
+                    </button>
+                </div>
             </div>
-            <div className="pagination mb-4 text-black">
+            <div className="pagination mb-4 flex items-center justify-start text-gray-900">
                 <button 
                     onClick={() => setPage(prev => Math.max(prev - 1, 0))} 
                     disabled={page === 0 || isLoading} 
-                    className="bg-gray-300 rounded p-2 mr-2"
+                    className="bg-gray-200 text-gray-800 rounded-md px-4 py-2 mr-2 hover:bg-gray-300 disabled:opacity-50"
                 >
                     Previous
                 </button>
-                <span className="mx-2 text-black">Page {page + 1} of {totalPages}</span>
+                <span className="mx-2 text-gray-900 font-medium">Page {page + 1} of {totalPages}</span>
                 <button 
                     onClick={() => setPage(prev => Math.min(prev + 1, totalPages - 1))} 
                     disabled={page + 1 === totalPages || isLoading} 
-                    className="bg-gray-300 rounded p-2 ml-2"
+                    className="bg-gray-200 text-gray-800 rounded-md px-4 py-2 ml-2 hover:bg-gray-300 disabled:opacity-50"
                 >
                     Next
                 </button>
             </div>
             {isLoading ? (
                 <div className="flex justify-center items-center h-40">
-                    <p className="text-black">Loading warehouses...</p>
+                    <p className="text-gray-900 text-lg">Loading warehouses...</p>
+                </div>
+            ) : error ? (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                    <strong className="font-bold">Error: </strong>
+                    <span className="block sm:inline">{error.message}</span>
+                </div>
+            ) : warehouses.length === 0 ? (
+                <div className="text-center py-4">
+                    <p className="text-gray-600 text-lg">No warehouses found</p>
                 </div>
             ) : (
                 <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y divide-gray-200 shadow-sm rounded-lg overflow-hidden">
+                        <thead className="bg-gray-100">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated At</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">ID</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Name</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Location</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Created At</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {Array.isArray(warehouses) && warehouses.length > 0 ? (
-                                warehouses.map((warehouse, index) => (
-                                    <tr key={warehouse.id} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-gray-100' : ''}`}> 
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{warehouse.id}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{warehouse.name}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{warehouse.location || 'N/A'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(warehouse.createdAt)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(warehouse.updatedAt)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <button 
-                                                onClick={() => {
-                                                    // Edit functionality would go here
-                                                    alert('Edit functionality not implemented yet');
-                                                }} 
-                                                className="text-blue-500 hover:text-blue-700 mr-4"
-                                            >
-                                                Edit
-                                            </button>
-                                            <button 
-                                                onClick={() => handleDelete(warehouse.id)} 
-                                                className={`${deletingWarehouseIds.includes(warehouse.id) ? 'text-gray-400' : 'text-red-500 hover:text-red-700'}`}
-                                                disabled={deletingWarehouseIds.includes(warehouse.id)}
-                                            >
-                                                {deletingWarehouseIds.includes(warehouse.id) ? 'Deleting...' : 'Delete'}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
-                                        {error ? `Error loading warehouses: ${error.message}` : 'No warehouses found'}
+                            {warehouses.map((warehouse) => (
+                                <tr key={warehouse.id} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{warehouse.id}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{warehouse.name}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{warehouse.location || 'N/A'}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(warehouse.createdAt)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                                        <button 
+                                            onClick={() => handleEditWarehouse(warehouse)}
+                                            className="bg-indigo-600 text-white rounded-md px-3 py-1 hover:bg-indigo-700 transition-colors"
+                                        >
+                                            Edit    
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDelete(warehouse.id)}
+                                            className="bg-red-600 text-white rounded-md px-3 py-1 hover:bg-red-700 transition-colors"
+                                            disabled={deletingWarehouseIds.includes(warehouse.id)}
+                                        >
+                                            {deletingWarehouseIds.includes(warehouse.id) ? 'Deleting...' : 'Delete'}
+                                        </button>
                                     </td>
                                 </tr>
-                            )}
+                            ))}
                         </tbody>
                     </table>
                 </div>
