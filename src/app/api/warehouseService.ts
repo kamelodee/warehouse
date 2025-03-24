@@ -1,9 +1,10 @@
 // warehouseService.ts - A utility service for warehouse-related API operations
 
 export interface Warehouse {
-    id: number;
+    id?: number;
     name: string;
     location?: string;
+    code?: string;
     createdAt?: string;
     updatedAt?: string;
 }

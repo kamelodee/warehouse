@@ -21,8 +21,8 @@ interface WarehouseWithEmails extends Warehouse {
 interface WarehousePayload {
     name: string;
     location?: string;
+    emails: { email: string }[];
     code?: string;
-    emails?: { email: string }[];
 }
 
 const AddWarehouse = ({ 
@@ -118,60 +118,60 @@ const AddWarehouse = ({
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         
-        if (!validateForm()) {
+        const newErrors: Record<string, string> = {};
+        
+        if (!name.trim()) {
+            newErrors.name = 'Warehouse name is required';
+        }
+        
+        if (code && code.trim().length > 20) {
+            newErrors.code = 'Warehouse code must be 20 characters or less';
+        }
+        
+        setErrors(newErrors);
+        
+        if (Object.keys(newErrors).length > 0) {
             return;
         }
         
         setIsLoading(true);
-
-        const payload: WarehousePayload = {
-            name: name.trim(),
-            location: location.trim(),
-            emails: emails.map(emailEntry => ({
-                email: emailEntry.email.trim()
-            }))
-        };
-
+        
         try {
+            const warehousePayload: WarehousePayload = {
+                name: name.trim(),
+                location: location?.trim() || undefined,
+                emails: emails.map(emailEntry => ({
+                    email: emailEntry.email.trim()
+                })),
+                code: code ? code.trim() : undefined
+            };
+            
             let data;
             if (isEditing && existingWarehouse?.id) {
                 // Update existing warehouse
-                data = await updateWarehouse(existingWarehouse.id, payload);
-                console.info('Warehouse updated:', data);
+                data = await updateWarehouse(existingWarehouse.id, warehousePayload);
                 alert('Warehouse updated successfully!');
             } else {
                 // Create new warehouse
-                data = await createWarehouse({
-                    ...payload,
-                    code: code.trim() // Only include code for new warehouses
-                });
+                data = await createWarehouse(warehousePayload);
                 console.info('Warehouse added:', data);
                 alert('Warehouse added successfully!');
             }
             
-            // Reset form fields
-            setCode('');
+            // Reset form
             setName('');
             setLocation('');
+            setCode('');
             setEmails([{ email: '' }]);
-            setErrors({});
             
-            // Close modal and notify parent component
+            // Close modal and notify parent
             onClose();
             if (onWarehouseAdded) {
                 onWarehouseAdded();
             }
         } catch (error) {
-            console.error(isEditing ? 'Error updating warehouse:' : 'Error adding warehouse:', error);
-            
-            // Log detailed error information
-            console.error(isEditing ? 'Update warehouse error details:' : 'Add warehouse error details:', {
-                warehouseData: payload,
-                timestamp: new Date().toISOString(),
-                error
-            });
-            
-            alert(`Error ${isEditing ? 'updating' : 'adding'} warehouse: ` + (error as Error).message);
+            console.error('Error saving warehouse:', error);
+            alert(`Failed to ${isEditing ? 'update' : 'add'} warehouse: ${(error as Error).message}`);
         } finally {
             setIsLoading(false);
         }

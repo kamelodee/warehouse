@@ -7,24 +7,25 @@ export interface ProductSerialNumber {
 
 export interface ShipmentStock {
     quantity: number;
-    quantityReceived?: number;
+    quantityReceived: number;
     productId: number;
-    productSerialNumbers?: ProductSerialNumber[];
+    productSerialNumbers: ProductSerialNumber[];
+    productSerialNumbersReceived: ProductSerialNumber[];
 }
 
 export interface Shipment {
-    id?: number;
+    referenceNumber: string;
     sourceWarehouseId: number;
     destinationWarehouseId: number;
     driverName: string;
     vehicleId: number;
     stocks: ShipmentStock[];
-    reference?: string;
     type?: string;
     status?: string;
+    notes?: string;
+    id?: number;
     createdAt?: string;
     updatedAt?: string;
-    notes?: string;
 }
 
 interface ShipmentSearchParams {

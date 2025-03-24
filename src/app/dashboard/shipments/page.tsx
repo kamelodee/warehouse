@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { searchShipments, deleteShipment, Shipment } from '../../api/shipmentService';
 import { searchWarehouses, Warehouse } from '../../api/warehouseService';
 import { searchVehicles, Vehicle } from '../../api/vehicleService';
@@ -17,10 +17,10 @@ const Shipments = () => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [deletingShipmentIds, setDeletingShipmentIds] = useState<number[]>([]);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-    const [warehouses, setWarehouses] = useState<Record<number, Warehouse>>({});
+    const [warehouses, setWarehouses] = useState<{ [key: number]: Warehouse }>({});
     // Loading states used in warehouse data fetching
     const [_isLoadingWarehouses, setIsLoadingWarehouses] = useState<boolean>(false); // eslint-disable-line @typescript-eslint/no-unused-vars
-    const [vehicles, setVehicles] = useState<Record<number, Vehicle>>({});
+    const [vehicles, setVehicles] = useState<{ [key: number]: Vehicle }>({});
     // Loading states used in vehicle data fetching
     const [_isLoadingVehicles, setIsLoadingVehicles] = useState<boolean>(false); // eslint-disable-line @typescript-eslint/no-unused-vars
    
@@ -28,7 +28,7 @@ const Shipments = () => {
     const [page, setPage] = useState<number>(0);
     const [size, setSize] = useState<number>(10);
     const [sort, setSort] = useState<string>('ASC');
-    const [sortField, setSortField] = useState<string>('id');
+    const [sortField, setSortField] = useState<string>('referenceNumber');
     const [totalPages, setTotalPages] = useState<number>(0);
     // Total elements used for internal calculations
     const [_totalElements, setTotalElements] = useState<number>(0); // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -48,18 +48,24 @@ const Shipments = () => {
         try {
             const data = await searchWarehouses({
                 page: 0,
-                size: 100, // Get all warehouses
+                size: 1000,
                 sort: 'ASC',
                 sortField: 'name'
             });
             
-            // Convert array to a map for easier lookup
-            const warehouseMap: Record<number, Warehouse> = {};
-            data.content.forEach(warehouse => {
-                warehouseMap[warehouse.id] = warehouse;
-            });
-            
-            setWarehouses(warehouseMap);
+            if (data.content && data.content.length > 0) {
+                const warehouseMap: { [key: number]: Warehouse } = {};
+                data.content.forEach(warehouse => {
+                    // Explicitly check for defined id
+                    if (warehouse.id) {
+                        warehouseMap[warehouse.id] = warehouse;
+                    }
+                });
+                
+                setWarehouses(warehouseMap);
+            } else {
+                setWarehouses({});
+            }
         } catch (error) {
             console.error('Error fetching warehouses:', error);
         } finally {
@@ -68,32 +74,30 @@ const Shipments = () => {
     }, [token]);
     
     const fetchVehicles = useCallback(async () => {
-        if (!token) return;
-        setIsLoadingVehicles(true);
-        
         try {
             const data = await searchVehicles({
                 page: 0,
-                size: 100, // Get all vehicles
-                sort: 'ASC',
-                sortField: 'identificationNumber'
+                size: 1000
             });
             
-            // Convert array to a map for easier lookup
-            const vehicleMap: Record<number, Vehicle> = {};
-            data.content.forEach(vehicle => {
-                if (vehicle.id !== undefined) {
-                    vehicleMap[vehicle.id] = vehicle;
-                }
-            });
-            
-            setVehicles(vehicleMap);
+            if (data.content && data.content.length > 0) {
+                const vehicleMap: { [key: number]: Vehicle } = {};
+                data.content.forEach(vehicle => {
+                    // Explicitly check for defined id
+                    if (vehicle.id) {
+                        vehicleMap[vehicle.id] = vehicle;
+                    }
+                });
+                
+                setVehicles(vehicleMap);
+            } else {
+                setVehicles({});
+            }
         } catch (error) {
             console.error('Error fetching vehicles:', error);
-        } finally {
-            setIsLoadingVehicles(false);
+            setVehicles({});
         }
-    }, [token]);
+    }, []);
 
     const fetchShipments = useCallback(async () => {
         if (!token) return;
@@ -144,7 +148,7 @@ const Shipments = () => {
                 // Remove shipment from the list without refetching to improve performance
                 setShipments(prev => prev.filter(shipment => shipment.id !== id));
                 // Show success message
-                const shipmentRef = shipments.find(s => s.id === id)?.reference || `Shipment #${id}`;
+                const shipmentRef = shipments.find(s => s.id === id)?.referenceNumber || `Shipment #${id}`;
                 alert(`${shipmentRef} has been deleted successfully.`);
             } catch (error) {
                 console.error('Error deleting shipment:', error);
@@ -222,18 +226,74 @@ const Shipments = () => {
     };
 
     // Get warehouse name by ID
-    const getWarehouseName = (warehouseId: number | undefined) => {
-        if (!warehouseId) return 'N/A';
-        return warehouses[warehouseId]?.name || `Warehouse #${warehouseId}`;
+    const getWarehouseName = (warehouseId: number | undefined): string => {
+        if (warehouseId === undefined) return 'N/A';
+        
+        const warehouse = warehouses[warehouseId];
+        return warehouse ? warehouse.name : `Warehouse #${warehouseId}`;
     };
     
     // Get vehicle info by ID
-    const getVehicleInfo = (vehicleId: number | undefined) => {
-        if (!vehicleId) return 'N/A';
+    const getVehicleName = (vehicleId: number | undefined): string => {
+        if (vehicleId === undefined) return 'N/A';
+        
         const vehicle = vehicles[vehicleId];
-        if (!vehicle) return `Vehicle #${vehicleId}`;
-        return vehicle.identificationNumber;
+        return vehicle ? vehicle.identificationNumber : `Vehicle #${vehicleId}`;
     };
+
+    const sortedShipments = useMemo(() => {
+        if (!shipments) return [];
+
+        return [...shipments].sort((a, b) => {
+            switch (sortField) {
+                case 'id':
+                    return sort === 'ASC' 
+                        ? (a.id || 0) - (b.id || 0)
+                        : (b.id || 0) - (a.id || 0);
+                case 'referenceNumber':
+                    return sort === 'ASC'
+                        ? (a.referenceNumber || '').localeCompare(b.referenceNumber || '')
+                        : (b.referenceNumber || '').localeCompare(a.referenceNumber || '');
+                case 'type':
+                    return sort === 'ASC'
+                        ? (a.type || '').localeCompare(b.type || '')
+                        : (b.type || '').localeCompare(a.type || '');
+                case 'status':
+                    return sort === 'ASC'
+                        ? (a.status || '').localeCompare(b.status || '')
+                        : (b.status || '').localeCompare(a.status || '');
+                case 'createdAt':
+                    return sort === 'ASC'
+                        ? new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+                        : new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+                default:
+                    return 0;
+            }
+        });
+    }, [shipments, sortField, sort]);
+
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const filteredShipments = useMemo(() => {
+        if (!sortedShipments) return [];
+
+        return sortedShipments.filter(shipment => {
+            const matchesSearch = !searchQuery || 
+                (shipment.referenceNumber && shipment.referenceNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                (shipment.id && shipment.id.toString().includes(searchQuery)) ||
+                (shipment.type && shipment.type.toLowerCase().includes(searchQuery.toLowerCase())) ||
+                (shipment.status && shipment.status.toLowerCase().includes(searchQuery.toLowerCase()));
+
+            return matchesSearch;
+        });
+    }, [sortedShipments, searchQuery]);
+
+    const paginatedShipments = useMemo(() => {
+        if (!filteredShipments) return [];
+
+        const startIndex = page * size;
+        return filteredShipments.slice(startIndex, startIndex + size);
+    }, [filteredShipments, page, size]);
 
     return (
         <div className="p-4">
@@ -266,7 +326,7 @@ const Shipments = () => {
                         className="border rounded p-1 text-black"
                     >
                         <option value="id">ID</option>
-                        <option value="reference">Reference</option>
+                        <option value="referenceNumber">Reference Number</option>
                         <option value="type">Type</option>
                         <option value="status">Status</option>
                         <option value="createdAt">Created Date</option>
@@ -291,6 +351,13 @@ const Shipments = () => {
                 >
                     {isLoading ? 'Loading...' : 'Apply Filters'}
                 </button>
+                <input 
+                    type="text" 
+                    value={searchQuery} 
+                    onChange={(e) => setSearchQuery(e.target.value)} 
+                    placeholder="Search by reference number" 
+                    className="border rounded p-1 text-black"
+                />
             </div>
             <div className="pagination mb-4 text-black">
                 <button 
@@ -300,10 +367,10 @@ const Shipments = () => {
                 >
                     Previous
                 </button>
-                <span className="mx-2 text-black">Page {page + 1} of {totalPages}</span>
+                <span className="mx-2 text-black">Page {page + 1} of {Math.ceil(filteredShipments.length / size)}</span>
                 <button 
-                    onClick={() => setPage(prev => Math.min(prev + 1, totalPages - 1))} 
-                    disabled={page + 1 === totalPages || isLoading} 
+                    onClick={() => setPage(prev => Math.min(prev + 1, Math.ceil(filteredShipments.length / size) - 1))} 
+                    disabled={page + 1 === Math.ceil(filteredShipments.length / size) || isLoading} 
                     className="bg-gray-300 rounded p-2 ml-2"
                 >
                     Next
@@ -319,7 +386,7 @@ const Shipments = () => {
                         <thead className="bg-gray-50">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference Number</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
@@ -332,11 +399,11 @@ const Shipments = () => {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {Array.isArray(shipments) && shipments.length > 0 ? (
-                                shipments.map((shipment, index) => (
+                            {Array.isArray(paginatedShipments) && paginatedShipments.length > 0 ? (
+                                paginatedShipments.map((shipment, index) => (
                                     <tr key={shipment.id} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-gray-100' : ''}`}> 
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{shipment.id}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{shipment.reference || 'N/A'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{shipment.referenceNumber || 'N/A'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{getShipmentTypeDisplay(shipment.type)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                                             <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeColor(shipment.status)}`}>
@@ -346,7 +413,7 @@ const Shipments = () => {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{getWarehouseName(shipment.sourceWarehouseId)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{getWarehouseName(shipment.destinationWarehouseId)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{shipment.driverName || 'N/A'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{getVehicleInfo(shipment.vehicleId)}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{getVehicleName(shipment.vehicleId)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{countStockItems(shipment)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(shipment.createdAt)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

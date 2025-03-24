@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { createShipment, Shipment, ShipmentStock } from '../../api/shipmentService';
+import { createShipment, Shipment, ShipmentStock, ProductSerialNumber } from '../../api/shipmentService';
 import { searchWarehouses, Warehouse } from '../../api/warehouseService';
 import { searchProducts, Product } from '../../api/productService';
 import { searchVehicles, Vehicle } from '../../api/vehicleService';
@@ -11,17 +11,25 @@ interface AddShipmentProps {
 }
 
 const AddShipment = ({ isOpen, onClose, onShipmentAdded }: AddShipmentProps) => {
+    const [referenceNumber, setReferenceNumber] = useState('');
     const [sourceWarehouseId, setSourceWarehouseId] = useState<number>(0);
     const [destinationWarehouseId, setDestinationWarehouseId] = useState<number>(0);
     const [driverName, setDriverName] = useState('');
     const [vehicleId, setVehicleId] = useState<number>(0);
-    const [reference, setReference] = useState('');
     const [type, setType] = useState('INBOUND');
     const [status, setStatus] = useState('PENDING');
     const [notes, setNotes] = useState('');
+    
+    // Stock-related states
     const [stocks, setStocks] = useState<ShipmentStock[]>([]);
     const [productId, setProductId] = useState<number>(0);
     const [quantity, setQuantity] = useState<number>(0);
+    const [quantityReceived, setQuantityReceived] = useState<number>(0);
+    
+    // Serial numbers states
+    const [serialNumbers, setSerialNumbers] = useState<string[]>(['']);
+    const [serialNumbersReceived, setSerialNumbersReceived] = useState<string[]>(['']);
+    
     const [isLoading, setIsLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     
@@ -115,7 +123,7 @@ const AddShipment = ({ isOpen, onClose, onShipmentAdded }: AddShipmentProps) => 
         }
     };
 
-    // Add a stock item to the stocks array
+    // Update addStockItem to include serial numbers
     const addStockItem = () => {
         if (!productId) {
             setErrors(prev => ({ ...prev, productId: 'Product is required' }));
@@ -127,27 +135,41 @@ const AddShipment = ({ isOpen, onClose, onShipmentAdded }: AddShipmentProps) => 
             return;
         }
         
+        // Prepare serial numbers with optional ID
+        const prepareSerialNumbers = (serialNums: string[]): ProductSerialNumber[] => 
+            serialNums.filter(sn => sn.trim() !== '').map(sn => ({
+                serialNumber: sn.trim()
+            }));
+
         // Check if this product is already in the stocks array
         const existingStockIndex = stocks.findIndex(stock => stock.productId === productId);
+        
+        const newStock: ShipmentStock = {
+            productId,
+            quantity,
+            quantityReceived: quantityReceived || 0,  // Ensure a number is always provided
+            productSerialNumbers: prepareSerialNumbers(serialNumbers),
+            productSerialNumbersReceived: prepareSerialNumbers(serialNumbersReceived)
+        };
         
         if (existingStockIndex >= 0) {
             // Update existing stock item
             const updatedStocks = [...stocks];
-            updatedStocks[existingStockIndex].quantity += quantity;
+            updatedStocks[existingStockIndex] = newStock;
             setStocks(updatedStocks);
         } else {
             // Add new stock item
-            const newStock: ShipmentStock = {
-                productId,
-                quantity,
-                productSerialNumbers: []
-            };
-            
             setStocks(prev => [...prev, newStock]);
         }
         
+        // Reset form fields
         setProductId(0);
         setQuantity(0);
+        setQuantityReceived(0);
+        setSerialNumbers(['']);
+        setSerialNumbersReceived(['']);
+        
+        // Clear related errors
         setErrors(prev => {
             const newErrors = { ...prev };
             delete newErrors.productId;
@@ -156,13 +178,13 @@ const AddShipment = ({ isOpen, onClose, onShipmentAdded }: AddShipmentProps) => 
         });
     };
 
-    // Remove a stock item from the stocks array
-    const removeStockItem = (index: number) => {
-        setStocks(prev => prev.filter((_, i) => i !== index));
-    };
-
+    // Update validateForm to include new fields
     const validateForm = () => {
         const newErrors: Record<string, string> = {};
+        
+        if (!referenceNumber.trim()) {
+            newErrors.referenceNumber = 'Reference Number is required';
+        }
         
         if (sourceWarehouseId <= 0) {
             newErrors.sourceWarehouseId = 'Source Warehouse is required';
@@ -192,6 +214,7 @@ const AddShipment = ({ isOpen, onClose, onShipmentAdded }: AddShipmentProps) => 
         return Object.keys(newErrors).length === 0;
     };
 
+    // Update handleSubmit to match new interface
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         
@@ -200,57 +223,47 @@ const AddShipment = ({ isOpen, onClose, onShipmentAdded }: AddShipmentProps) => 
         }
         
         setIsLoading(true);
-
-        const payload: Shipment = {
+        
+        const shipmentPayload: Shipment = {
+            referenceNumber: referenceNumber.trim(),
             sourceWarehouseId,
             destinationWarehouseId,
-            driverName,
+            driverName: driverName.trim(),
             vehicleId,
             stocks,
-            reference: reference.trim() || undefined,
-            type: type || undefined,
-            status: status || undefined,
+            type: type || 'OUTBOUND',
+            status: status || 'IN_TRANSIT',
             notes: notes.trim() || undefined
         };
-
+        
         try {
-            const data = await createShipment(payload);
-            console.info('Shipment added:', data);
-            alert('Shipment added successfully!');
+            const createdShipment = await createShipment(shipmentPayload);
+            console.info('Shipment created:', createdShipment);
             
-            // Reset form fields
+            // Reset form
+            setReferenceNumber('');
             setSourceWarehouseId(0);
             setDestinationWarehouseId(0);
             setDriverName('');
             setVehicleId(0);
-            setReference('');
-            setType('INBOUND');
-            setStatus('PENDING');
-            setNotes('');
             setStocks([]);
-            setErrors({});
+            setType('OUTBOUND');
+            setStatus('IN_TRANSIT');
+            setNotes('');
             
-            // Close modal and notify parent component
+            // Close modal and notify parent
             onClose();
             if (onShipmentAdded) {
                 onShipmentAdded();
             }
         } catch (error) {
-            console.error('Error adding shipment:', error);
-            console.log(payload)
-            // Log detailed error information
-            console.error('Add shipment error details:', {
-                shipmentData: payload,
-                timestamp: new Date().toISOString(),
-                error
-            });
-            
-            alert('Error adding shipment: ' + (error as Error).message);
+            console.error('Error creating shipment:', error);
+            alert('Failed to create shipment: ' + (error as Error).message);
         } finally {
             setIsLoading(false);
         }
     };
-    
+
     // Get product name by ID
     const getProductName = (productId: number): string => {
         const product = products.find(p => p.id === productId);
@@ -274,6 +287,17 @@ const AddShipment = ({ isOpen, onClose, onShipmentAdded }: AddShipmentProps) => 
                 </div>
                 <form onSubmit={handleSubmit}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label htmlFor="referenceNumber" className="block text-gray-700">Reference Number</label>
+                            <input 
+                                type="text" 
+                                id="referenceNumber" 
+                                value={referenceNumber} 
+                                onChange={(e) => setReferenceNumber(e.target.value)} 
+                                className={`mt-1 block w-full border rounded-md p-2 ${errors.referenceNumber ? 'border-red-500' : ''}`} 
+                            />
+                            {errors.referenceNumber && <p className="text-red-500 text-sm mt-1">{errors.referenceNumber}</p>}
+                        </div>
                         <div>
                             <label htmlFor="sourceWarehouseId" className="block text-gray-700">Source Warehouse</label>
                             {isLoadingWarehouses ? (
@@ -355,16 +379,6 @@ const AddShipment = ({ isOpen, onClose, onShipmentAdded }: AddShipmentProps) => 
                             {errors.vehicleId && <p className="text-red-500 text-sm mt-1">{errors.vehicleId}</p>}
                         </div>
                         <div>
-                            <label htmlFor="reference" className="block text-gray-700">Reference (Optional)</label>
-                            <input 
-                                type="text" 
-                                id="reference" 
-                                value={reference} 
-                                onChange={(e) => setReference(e.target.value)} 
-                                className="mt-1 block w-full border rounded-md p-2"
-                            />
-                        </div>
-                        <div>
                             <label htmlFor="type" className="block text-gray-700">Type (Optional)</label>
                             <select 
                                 id="type" 
@@ -444,12 +458,69 @@ const AddShipment = ({ isOpen, onClose, onShipmentAdded }: AddShipmentProps) => 
                                 />
                                 {errors.quantity && <p className="text-red-500 text-sm mt-1">{errors.quantity}</p>}
                             </div>
+                            <div>
+                                <label htmlFor="quantityReceived" className="block text-gray-700">Quantity Received</label>
+                                <input 
+                                    type="number" 
+                                    id="quantityReceived" 
+                                    value={quantityReceived || ''} 
+                                    onChange={(e) => setQuantityReceived(Number(e.target.value))} 
+                                    step="0.01"
+                                    className="mt-1 block w-full border rounded-md p-2"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="serialNumbers" className="block text-gray-700">Serial Numbers</label>
+                                {serialNumbers.map((serialNumber, index) => (
+                                    <input 
+                                        key={index} 
+                                        type="text" 
+                                        value={serialNumber} 
+                                        onChange={(e) => {
+                                            const newSerialNumbers = [...serialNumbers];
+                                            newSerialNumbers[index] = e.target.value;
+                                            setSerialNumbers(newSerialNumbers);
+                                        }} 
+                                        className="mt-1 block w-full border rounded-md p-2 mb-2"
+                                    />
+                                ))}
+                                <button 
+                                    type="button" 
+                                    onClick={() => setSerialNumbers([...serialNumbers, ''])}
+                                    className="bg-indigo-600 text-white rounded-md px-4 py-2 hover:bg-indigo-700 transition-colors"
+                                >
+                                    Add Serial Number
+                                </button>
+                            </div>
+                            <div>
+                                <label htmlFor="serialNumbersReceived" className="block text-gray-700">Serial Numbers Received</label>
+                                {serialNumbersReceived.map((serialNumber, index) => (
+                                    <input 
+                                        key={index} 
+                                        type="text" 
+                                        value={serialNumber} 
+                                        onChange={(e) => {
+                                            const newSerialNumbers = [...serialNumbersReceived];
+                                            newSerialNumbers[index] = e.target.value;
+                                            setSerialNumbersReceived(newSerialNumbers);
+                                        }} 
+                                        className="mt-1 block w-full border rounded-md p-2 mb-2"
+                                    />
+                                ))}
+                                <button 
+                                    type="button" 
+                                    onClick={() => setSerialNumbersReceived([...serialNumbersReceived, ''])}
+                                    className="bg-indigo-600 text-white rounded-md px-4 py-2 hover:bg-indigo-700 transition-colors"
+                                >
+                                    Add Serial Number Received
+                                </button>
+                            </div>
                         </div>
                         
                         <button 
                             type="button" 
                             onClick={addStockItem}
-                            className="bg-green-500 text-white rounded-md px-4 py-2 hover:bg-green-600"
+                            className="bg-indigo-600 text-white rounded-md px-4 py-2 hover:bg-indigo-700 transition-colors"
                         >
                             Add Stock Item
                         </button>
@@ -461,6 +532,7 @@ const AddShipment = ({ isOpen, onClose, onShipmentAdded }: AddShipmentProps) => 
                                         <tr>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity Received</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                         </tr>
                                     </thead>
@@ -469,10 +541,15 @@ const AddShipment = ({ isOpen, onClose, onShipmentAdded }: AddShipmentProps) => 
                                             <tr key={index}>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{getProductName(stock.productId)}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{stock.quantity}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{stock.quantityReceived}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                     <button 
                                                         type="button"
-                                                        onClick={() => removeStockItem(index)} 
+                                                        onClick={() => {
+                                                            const newStocks = [...stocks];
+                                                            newStocks.splice(index, 1);
+                                                            setStocks(newStocks);
+                                                        }} 
                                                         className="text-red-500 hover:text-red-700"
                                                     >
                                                         Remove
@@ -497,7 +574,7 @@ const AddShipment = ({ isOpen, onClose, onShipmentAdded }: AddShipmentProps) => 
                         <button 
                             type="submit" 
                             disabled={isLoading} 
-                            className="bg-blue-500 text-white rounded-md px-4 py-2 hover:bg-blue-600"
+                            className="bg-indigo-600 text-white rounded-md px-4 py-2 hover:bg-indigo-700 transition-colors"
                         >
                             {isLoading ? 'Adding...' : 'Add Shipment'}
                         </button>
