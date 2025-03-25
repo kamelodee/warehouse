@@ -73,7 +73,7 @@ export default function DashboardLayout({
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out shadow-xl`}>
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between h-16 px-4 bg-indigo-600">
-            <span className="text-xl font-bold text-white">Admin Panel</span>
+            <span className="text-xl font-bold text-white">Inventory Manager App</span>
             <button 
               onClick={() => setSidebarOpen(false)}
               className="p-1 text-white hover:bg-indigo-500 rounded-md lg:hidden"

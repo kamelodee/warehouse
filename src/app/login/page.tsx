@@ -57,12 +57,12 @@ export default function LoginPage() {
       <div className="bg-white p-8 rounded-lg shadow-md w-96">
         <div className="flex justify-center mb-6">
           <img 
-            src="/hisense-logo.png" 
-            alt="Hisense Logo" 
-            className="h-16 w-auto"
+            src="/logo.jpg" 
+            alt="Company Logo" 
+            className="h-24 w-auto"
           />
         </div>
-        <h2 className="text-2xl font-bold mb-6 text-center">Stock Management Login</h2>
+        <h2 className="text-2xl font-bold text-indigo-500 mb-6 text-center"> Login</h2>
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
             {error}
@@ -104,7 +104,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full ${isLoading ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-700'} text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline`}
+              className={`w-full ${isLoading ? 'bg-gray-400' : 'bg-indigo-500 hover:bg-indigo-700'} text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline`}
             >
               {isLoading ? 'Logging in...' : 'Sign In'}
             </button>

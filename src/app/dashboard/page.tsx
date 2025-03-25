@@ -78,6 +78,14 @@ interface RecentProduct {
   quantity: number;
 }
 
+interface Shipment {
+  id?: number | string;
+  referenceNumber?: string;
+  status?: string;
+  destination?: string;
+  date?: string;
+}
+
 interface RecentShipment {
   id: number;
   referenceNumber: string;
@@ -228,6 +236,35 @@ export default function Dashboard() {
           safeFetch('https://stock.hisense.com.gh/api/v1.0/warehouses/search', fetchOptions(token))
         ]);
 
+        // Log the full shipment data for debugging
+        console.log('Shipping Data Payload:', JSON.stringify(shippingData, null, 2));
+
+        // Prepare shipments list
+        const recentShipments = shippingData.content ?
+          shippingData.content.slice(0, 5).map((shipment: Shipment) => ({
+            id: shipment.id || Math.random().toString(36).substr(2, 9),
+            referenceNumber: shipment.referenceNumber || `REF-${Math.random().toString(36).substr(2, 6)}`,
+            status: shipment.status || 'unknown',
+            destination: shipment.destination || 'Unknown',
+            date: shipment.date || new Date().toISOString()
+          })) : 
+          [
+            { 
+              id: '1', 
+              referenceNumber: 'REF-001', 
+              status: 'in_transit', 
+              destination: 'Accra', 
+              date: new Date().toISOString() 
+            },
+            { 
+              id: '2', 
+              referenceNumber: 'REF-002', 
+              status: 'delivered', 
+              destination: 'Kumasi', 
+              date: new Date().toISOString() 
+            }
+          ];
+
         // Update dashboard data with safe defaults
         setDashboardData({
           productMetrics: {
@@ -264,7 +301,7 @@ export default function Dashboard() {
           },
           productCategories: productData.categories || [],
           recentProducts: productData.recentProducts || [],
-          recentShipments: shippingData.recentShipments || []
+          recentShipments: recentShipments
         });
 
       } catch (err) {
@@ -310,141 +347,187 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="bg-gray-100 min-h-screen">
+      <header className="bg-white shadow-md py-4 px-6 flex justify-between items-center">
+        <div className="flex items-center space-x-4">
+          <h1 className="text-2xl font-bold text-gray-800">Inventory Manager App</h1>
+        </div>
+      </header>
       <LoadingIndicator />
       {errors.length > 0 && <ErrorDisplay />}
       
-      <div className="container mx-auto space-y-6">
-        {/* Header */}
-        <div className="bg-white shadow-md rounded-lg p-6 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Comprehensive Dashboard</h1>
-            <p className="text-gray-600">Detailed insights across all business operations</p>
+      <div className="container mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-3xl">
+            <div className="bg-gradient-to-r from-green-400 to-green-600 p-1"></div>
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <FaTruck className="text-green-600 text-4xl opacity-75" />
+                <span className="text-sm text-gray-500 font-medium uppercase tracking-wider">Total Shipments</span>
+              </div>
+              <div className="text-4xl font-extrabold text-gray-800 mb-4">
+                {dashboardData.shippingMetrics.totalShipments}
+              </div>
+              <div className="border-t border-gray-200 pt-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Recent Shipments</h4>
+                <ul className="space-y-1">
+                  {dashboardData.recentShipments.slice(0, 5).map((shipment) => (
+                    <li key={shipment.id} className="text-sm text-gray-600 flex justify-between">
+                      <span>{shipment.referenceNumber}</span>
+                      <span className={`
+                        ${shipment.status === 'delivered' ? 'text-green-600' : 
+                          shipment.status === 'in_transit' ? 'text-blue-600' : 
+                          'text-yellow-600'}
+                      `}>
+                        {shipment.status}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </div>
-          <div className="flex space-x-4">
-            <button className="btn btn-primary flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-              <FaClipboardList className="mr-2" /> Generate Report
-            </button>
-            <button className="btn btn-secondary flex items-center bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
-              <FaChartLine className="mr-2" /> Analyze Data
-            </button>
+          
+          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-3xl">
+            <div className="bg-gradient-to-r from-blue-400 to-blue-600 p-1"></div>
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <FaShip className="text-blue-600 text-4xl opacity-75" />
+                <span className="text-sm text-gray-500 font-medium uppercase tracking-wider">In Transit</span>
+              </div>
+              <div className="text-4xl font-extrabold text-gray-800 mb-4">
+                {dashboardData.shippingMetrics.inTransitShipments}
+              </div>
+              <div className="border-t border-gray-200 pt-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">In Transit Shipments</h4>
+                <ul className="space-y-1">
+                  {dashboardData.recentShipments
+                    .filter(shipment => shipment.status === 'in_transit')
+                    .slice(0, 5)
+                    .map((shipment) => (
+                    <li key={shipment.id} className="text-sm text-gray-600 flex justify-between">
+                      <span>{shipment.referenceNumber}</span>
+                      <span>{shipment.destination}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-3xl">
+            <div className="bg-gradient-to-r from-emerald-400 to-emerald-600 p-1"></div>
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <FaClipboardCheck className="text-emerald-600 text-4xl opacity-75" />
+                <span className="text-sm text-gray-500 font-medium uppercase tracking-wider">Delivered</span>
+              </div>
+              <div className="text-4xl font-extrabold text-gray-800 mb-4">
+                {dashboardData.shippingMetrics.deliveredShipments}
+              </div>
+              <div className="border-t border-gray-200 pt-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Delivered Shipments</h4>
+                <ul className="space-y-1">
+                  {dashboardData.recentShipments
+                    .filter(shipment => shipment.status === 'delivered')
+                    .slice(0, 5)
+                    .map((shipment) => (
+                    <li key={shipment.id} className="text-sm text-gray-600 flex justify-between">
+                      <span>{shipment.referenceNumber}</span>
+                      <span>{shipment.destination}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Key Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Products Metrics */}
-          <div className="bg-white rounded-lg shadow-md p-6 transform hover:scale-105 transition duration-300 ease-in-out">
-            <div className="flex justify-between items-center mb-4">
-              <FaBox className="text-blue-500 text-3xl" />
-              <span className="text-sm text-gray-500 font-medium">Total Products</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-800">
-              {dashboardData.productMetrics.totalProducts}
-            </div>
-            <div className="text-sm text-green-600 mt-2">
-              +{dashboardData.productMetrics.activeProducts} Active
-            </div>
-          </div>
-
-          {/* Users Metrics */}
-          <div className="bg-white rounded-lg shadow-md p-6 transform hover:scale-105 transition duration-300 ease-in-out">
-            <div className="flex justify-between items-center mb-4">
-              <FaUser className="text-purple-500 text-3xl" />
-              <span className="text-sm text-gray-500 font-medium">Total Users</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-800">
-              {dashboardData.userMetrics?.totalUsers || 0}
-            </div>
-            <div className="text-sm text-green-600 mt-2">
-              +{(dashboardData.userMetrics?.users || []).filter(u => u.status === 'active').length} Active
-            </div>
-          </div>
-
-          {/* Shipping Metrics */}
-          <div className="bg-white rounded-lg shadow-md p-6 transform hover:scale-105 transition duration-300 ease-in-out">
-            <div className="flex justify-between items-center mb-4">
-              <FaTruck className="text-green-500 text-3xl" />
-              <span className="text-sm text-gray-500 font-medium">Total Shipments</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-800">
-              {dashboardData.shippingMetrics.totalShipments}
-            </div>
-            <div className="text-sm text-green-600 mt-2">
-              +{dashboardData.shippingMetrics.deliveredShipments} Delivered
+        {/* Duplicate Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
+          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-3xl">
+            <div className="bg-gradient-to-r from-green-400 to-green-600 p-1"></div>
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <FaTruck className="text-green-600 text-4xl opacity-75" />
+                <span className="text-sm text-gray-500 font-medium uppercase tracking-wider">Total Shipments</span>
+              </div>
+              <div className="text-4xl font-extrabold text-gray-800 mb-4">
+                {dashboardData.shippingMetrics.totalShipments}
+              </div>
+              <div className="border-t border-gray-200 pt-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Recent Shipments</h4>
+                <ul className="space-y-1">
+                  {dashboardData.recentShipments
+                    .slice(0, 5)
+                    .map((shipment) => (
+                    <li key={shipment.id} className="text-sm text-gray-600 flex justify-between">
+                      <span>{shipment.referenceNumber}</span>
+                      <span className={`
+                        ${shipment.status === 'delivered' ? 'text-green-600' : 
+                          shipment.status === 'in_transit' ? 'text-blue-600' : 
+                          'text-yellow-600'}
+                      `}>
+                        {shipment.status}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
-
-          {/* Warehouses Metrics */}
-          <div className="bg-white rounded-lg shadow-md p-6 transform hover:scale-105 transition duration-300 ease-in-out">
-            <div className="flex justify-between items-center mb-4">
-              <FaWarehouse className="text-indigo-500 text-3xl" />
-              <span className="text-sm text-gray-500 font-medium">Total Warehouses</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-800">
-              {dashboardData.warehouseMetrics.totalWarehouses}
-            </div>
-            <div className="text-sm text-green-600 mt-2">
-              +{dashboardData.warehouseMetrics.activeWarehouses} Active
-            </div>
-          </div>
-        </div>
-
-        {/* Additional Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
-          {/* Inventory Metrics */}
-          <div className="bg-white rounded-lg shadow-md p-6 transform hover:scale-105 transition duration-300 ease-in-out">
-            <div className="flex justify-between items-center mb-4">
-              <FaClipboardList className="text-yellow-500 text-3xl" />
-              <span className="text-sm text-gray-500 font-medium">Inventory Value</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-800">
-              ${dashboardData.inventoryMetrics.totalInventoryValue.toLocaleString()}
-            </div>
-            <div className="text-sm text-red-600 mt-2">
-              {dashboardData.inventoryMetrics.lowStockItems} Low Stock
+          
+          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-3xl">
+            <div className="bg-gradient-to-r from-blue-400 to-blue-600 p-1"></div>
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <FaShip className="text-blue-600 text-4xl opacity-75" />
+                <span className="text-sm text-gray-500 font-medium uppercase tracking-wider">In Transit</span>
+              </div>
+              <div className="text-4xl font-extrabold text-gray-800 mb-4">
+                {dashboardData.shippingMetrics.inTransitShipments}
+              </div>
+              <div className="border-t border-gray-200 pt-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">In Transit Shipments</h4>
+                <ul className="space-y-1">
+                  {dashboardData.recentShipments
+                    .filter(shipment => shipment.status === 'in_transit')
+                    .slice(0, 5)
+                    .map((shipment) => (
+                    <li key={shipment.id} className="text-sm text-gray-600 flex justify-between">
+                      <span>{shipment.referenceNumber}</span>
+                      <span>{shipment.destination}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
-
-          {/* Orders Metrics - Placeholder */}
-          <div className="bg-white rounded-lg shadow-md p-6 transform hover:scale-105 transition duration-300 ease-in-out">
-            <div className="flex justify-between items-center mb-4">
-              <FaShoppingCart className="text-teal-500 text-3xl" />
-              <span className="text-sm text-gray-500 font-medium">Total Orders</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-800">
-              N/A
-            </div>
-            <div className="text-sm text-yellow-600 mt-2">
-              Endpoint Unavailable
-            </div>
-          </div>
-
-          {/* Suppliers Metrics - Placeholder */}
-          <div className="bg-white rounded-lg shadow-md p-6 transform hover:scale-105 transition duration-300 ease-in-out">
-            <div className="flex justify-between items-center mb-4">
-              <FaIndustry className="text-pink-500 text-3xl" />
-              <span className="text-sm text-gray-500 font-medium">Total Suppliers</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-800">
-              N/A
-            </div>
-            <div className="text-sm text-green-600 mt-2">
-              Endpoint Unavailable
-            </div>
-          </div>
-
-          {/* Storage Capacity Metrics */}
-          <div className="bg-white rounded-lg shadow-md p-6 transform hover:scale-105 transition duration-300 ease-in-out">
-            <div className="flex justify-between items-center mb-4">
-              <FaBoxOpen className="text-orange-500 text-3xl" />
-              <span className="text-sm text-gray-500 font-medium">Storage Capacity</span>
-            </div>
-            <div className="text-3xl font-bold text-gray-800">
-              {dashboardData.warehouseMetrics.storageCapacity} sqft
-            </div>
-            <div className="text-sm text-blue-600 mt-2">
-              {Math.round((dashboardData.warehouseMetrics.occupiedSpace / dashboardData.warehouseMetrics.storageCapacity) * 100)}% Occupied
+          
+          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-3xl">
+            <div className="bg-gradient-to-r from-emerald-400 to-emerald-600 p-1"></div>
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <FaClipboardCheck className="text-emerald-600 text-4xl opacity-75" />
+                <span className="text-sm text-gray-500 font-medium uppercase tracking-wider">Delivered</span>
+              </div>
+              <div className="text-4xl font-extrabold text-gray-800 mb-4">
+                {dashboardData.shippingMetrics.deliveredShipments}
+              </div>
+              <div className="border-t border-gray-200 pt-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Delivered Shipments</h4>
+                <ul className="space-y-1">
+                  {dashboardData.recentShipments
+                    .filter(shipment => shipment.status === 'delivered')
+                    .slice(0, 5)
+                    .map((shipment) => (
+                    <li key={shipment.id} className="text-sm text-gray-600 flex justify-between">
+                      <span>{shipment.referenceNumber}</span>
+                      <span>{shipment.destination}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
         </div>
