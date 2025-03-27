@@ -30,7 +30,7 @@ export default function LoginPage() {
       }
 
       if (response.accessToken) {
-        sessionStorage.setItem('accessToken', response.accessToken);
+        localStorage.setItem('accessToken', response.accessToken);
         
         localStorage.setItem('user', JSON.stringify({
           id: response.id,
