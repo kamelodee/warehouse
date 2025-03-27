@@ -52,7 +52,7 @@ const Products = () => {
     // Kept for potential future use in pagination calculations
 
     useEffect(() => {
-        const storedToken = sessionStorage.getItem('accessToken');
+        const storedToken = localStorage.getItem('accessToken');
         setToken(storedToken);
         if (!storedToken) {
             window.location.href = '/login';

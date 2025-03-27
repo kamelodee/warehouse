@@ -17,6 +17,7 @@ import {
   FaShip,
   FaUserTie
 } from 'react-icons/fa';
+import { withAuth } from '../components/withAuth';
 
 // Expanded interfaces to include shipping and user metrics
 interface ProductMetrics {
@@ -115,7 +116,7 @@ interface DashboardError {
   endpoint?: string;
 }
 
-export default function Dashboard() {
+function DashboardPage() {
   // State management with error handling
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     productMetrics: {
@@ -204,8 +205,9 @@ export default function Dashboard() {
       setErrors([]);
 
       try {
-        const token = sessionStorage.getItem('accessToken');
-
+        const token = localStorage.getItem('accessToken');
+         console.log("token==========")
+         console.log(token)
         if (!token) {
           throw new Error('No access token found. Please log in.');
         }
@@ -535,3 +537,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+export default withAuth(DashboardPage);

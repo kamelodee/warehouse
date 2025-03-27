@@ -2,54 +2,54 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { userService } from '@/app/api/userService';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  // Router is used for navigation in other parts of the component
-  const _router = useRouter();
+  const router = useRouter();
 
   const handleLogin = async () => {
+    setError('');
     setIsLoading(true);
-    try {
-      const response = await fetch('https://stock.hisense.com.gh/api/v1.0/auth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
 
-      const data = await response.json();
-      console.log(data);
-      // Handle login response
-      if (response.ok) {
-        // Store the token in sessionStorage
-        sessionStorage.setItem('accessToken', data.accessToken);
-        sessionStorage.setItem('refreshToken', data.refreshToken);
-        sessionStorage.setItem('user', JSON.stringify(data.user));
-        // Redirect to the dashboard if successful
-        window.location.href = '/dashboard';
-      } else {
-        // Handle login failure
-        console.error('Login failed:', data);
-        alert('Login failed. Please check your credentials.');
+    try {
+      const response = await userService.login(email, password);
+
+      if (response.defaultPassword) {
+        localStorage.setItem('defaultPasswordUser', JSON.stringify({
+          email: response.email,
+          defaultPassword: true
+        }));
+        localStorage.setItem('user', JSON.stringify(response));
+        
+        router.push('/reset-password');
+        return;
       }
-    } catch (_err) {
-      setError('An unexpected error occurred');
+
+      if (response.accessToken) {
+        sessionStorage.setItem('accessToken', response.accessToken);
+        
+        localStorage.setItem('user', JSON.stringify({
+          id: response.id,
+          email: response.email,
+          name: response.name,
+          role: response.role,
+          defaultPassword: response.defaultPassword
+        }));
+
+        router.push('/dashboard');
+      } else {
+        throw new Error('No access token received');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Logout function kept for future use
-  const _handleLogout = () => {
-    sessionStorage.removeItem('accessToken');
-    sessionStorage.removeItem('refreshToken');
-    sessionStorage.removeItem('user');
-    window.location.href = '/login'; // Redirect to login page
   };
 
   return (
@@ -62,7 +62,7 @@ export default function LoginPage() {
             className="h-24 w-auto"
           />
         </div>
-        <h2 className="text-2xl font-bold text-indigo-500 mb-6 text-center"> Login</h2>
+        <h2 className="text-2xl font-bold text-indigo-500 mb-6 text-center">Login</h2>
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
             {error}
@@ -104,9 +104,13 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className={`w-full ${isLoading ? 'bg-gray-400' : 'bg-indigo-500 hover:bg-indigo-700'} text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline`}
+              className={`w-full py-2 px-4 rounded focus:outline-none focus:shadow-outline ${
+                isLoading 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
+              }`}
             >
-              {isLoading ? 'Logging in...' : 'Sign In'}
+              {isLoading ? 'Logging in...' : 'Login'}
             </button>
           </div>
         </form>

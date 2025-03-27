@@ -28,7 +28,7 @@ const Vehicles = () => {
     const [_totalElements, setTotalElements] = useState<number>(0); // eslint-disable-line @typescript-eslint/no-unused-vars
 
     useEffect(() => {
-        const storedToken = sessionStorage.getItem('accessToken');
+        const storedToken = localStorage.getItem('accessToken');
         setToken(storedToken);
         if (!storedToken) {
             window.location.href = '/login';

@@ -45,7 +45,7 @@ const getHeaders = (): HeadersInit => {
 /**
  * Log API errors with detailed information
  */
-const logApiError = (method: string, endpoint: string, error: unknown, additionalInfo?: Record<string, unknown>) => {
+export const logApiError = (method: string, endpoint: string, error: unknown, additionalInfo?: Record<string, unknown>) => {
     console.error(`API Error [${method} ${endpoint}]:`, {
         message: error instanceof Error ? error.message : 'Unknown error',
         status: error instanceof Error && 'status' in error ? 

@@ -27,7 +27,7 @@ const Warehouses = () => {
     const [_totalElements, setTotalElements] = useState<number>(0);
 
     useEffect(() => {
-        const storedToken = sessionStorage.getItem('accessToken');
+        const storedToken = localStorage.getItem('accessToken');
         setToken(storedToken);
         if (!storedToken) {
             window.location.href = '/login';

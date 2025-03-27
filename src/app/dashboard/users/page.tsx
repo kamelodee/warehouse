@@ -84,7 +84,7 @@ export default function Users() {
     lastName: '',
     email: '',
     phoneNumber: '',
-    password: '',
+    password: '', // Optional password field
     role: 'USER', // Default role
     warehouseId: 0
   });
@@ -146,7 +146,7 @@ export default function Users() {
     setUsersFetchError(null);
 
     try {
-      const storedToken = sessionStorage.getItem('accessToken');
+      const storedToken = localStorage.getItem('accessToken');
       if (!storedToken) {
         console.warn('No access token found for user API request');
       }
@@ -237,7 +237,7 @@ export default function Users() {
     setWarehousesFetchError(null);
 
     try {
-      const storedToken = sessionStorage.getItem('accessToken');
+      const storedToken = localStorage.getItem('accessToken');
       if (!storedToken) {
         console.warn('No access token found for warehouse API request');
       }
@@ -371,7 +371,7 @@ export default function Users() {
   }, []);
 
   useEffect(() => {
-    const storedToken = sessionStorage.getItem('accessToken');
+    const storedToken = localStorage.getItem('accessToken');
     setToken(storedToken);
 
     // Fetch users when component mounts
@@ -419,11 +419,8 @@ export default function Users() {
       return 'Role is required';
     }
 
-    if (!newUser.password) {
-      return 'Password is required';
-    }
-
-    if (newUser.password.length < 8) {
+    // Optional password validation - only check if password is provided
+    if (newUser.password && newUser.password.length < 8) {
       return 'Password must be at least 8 characters long';
     }
 
@@ -450,7 +447,7 @@ export default function Users() {
     setDeleteError(null);
 
     try {
-      const storedToken = sessionStorage.getItem('accessToken');
+      const storedToken = localStorage.getItem('accessToken');
       if (!storedToken) {
         console.warn('No access token found for user deletion API request');
         throw new Error('Authentication token is missing');
@@ -541,7 +538,7 @@ export default function Users() {
     setEditApiError(null);
 
     try {
-      const storedToken = sessionStorage.getItem('accessToken');
+      const storedToken = localStorage.getItem('accessToken');
       if (!storedToken) {
         console.warn('No access token found for user fetch API request');
         throw new Error('Authentication token is missing');
@@ -634,20 +631,28 @@ export default function Users() {
     setEditApiError(null);
 
     try {
-      const storedToken = sessionStorage.getItem('accessToken');
+      const storedToken = localStorage.getItem('accessToken');
       if (!storedToken) {
         console.warn('No access token found for user update API request');
         throw new Error('Authentication token is missing');
       }
 
       // Prepare payload with only the required fields for the API
-      const payload: Record<string, string | number> = {
+      const payload: {
+        firstName: string;
+        lastName: string;
+        email: string;
+        phoneNumber: string;
+        role: string;
+        warehouseId: number;
+        password?: string;
+      } = {
         firstName: editUser.firstName,
         lastName: editUser.lastName,
         email: editUser.email,
         phoneNumber: editUser.phoneNumber,
-        warehouseId: editUser.warehouseId,
-        role: editUser.role
+        role: editUser.role,
+        warehouseId: editUser.warehouseId
       };
 
       // Only include password if it was changed
@@ -790,19 +795,30 @@ export default function Users() {
 
     try {
       // Prepare payload with only the required fields for the API
-      const payload = {
+      const payload: {
+        firstName: string;
+        lastName: string;
+        email: string;
+        phoneNumber: string;
+        role: string;
+        warehouseId: number;
+        password?: string;
+      } = {
         firstName: newUser.firstName,
         lastName: newUser.lastName,
         email: newUser.email,
         phoneNumber: newUser.phoneNumber,
-        password: newUser.password,
         role: newUser.role,
         warehouseId: newUser.warehouseId
       };
 
+      // Only include password if it was provided
+      if (newUser.password) {
+        payload.password = newUser.password;
+      }
+
       console.log('Sending user creation payload:', {
         ...payload,
-        password: '[REDACTED]', // Don't log actual password
         warehouseDetails: warehouses.find(w => w.id === payload.warehouseId)
       });
 
@@ -1282,6 +1298,19 @@ export default function Users() {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base text-gray-900"
+                  placeholder="Optional password"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Role*
                 </label>
                 <select
@@ -1332,20 +1361,6 @@ export default function Users() {
                     </button>
                   </div>
                 )}
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password*
-                </label>
-                <input
-                  type="password"
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base text-gray-900"
-                  placeholder="********"
-                  required
-                />
               </div>
             </div>
             
