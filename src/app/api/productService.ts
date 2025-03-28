@@ -29,7 +29,7 @@ const API_BASE_URL = 'https://stock.hisense.com.gh/api/v1.0';
  * Get the authentication token from session storage
  */
 const getToken = (): string | null => {
-    return sessionStorage.getItem('accessToken');
+    return localStorage.getItem('accessToken');
 };
 
 /**
@@ -396,7 +396,7 @@ export const deleteProduct = async (id: number): Promise<void> => {
  * @returns Array of created products
  */
 export const createBatchProducts = async (products: Partial<Product>[]): Promise<Product[]> => {
-    const token = sessionStorage.getItem('accessToken');
+    const token = localStorage.getItem('accessToken');
     
     if (!token) {
         const errorMessage = 'Authentication token not found';

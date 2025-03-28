@@ -28,7 +28,7 @@ const API_BASE_URL = 'https://stock.hisense.com.gh/api/v1.0';
  * Get the authentication token from session storage
  */
 const getToken = (): string | null => {
-    return sessionStorage.getItem('accessToken');
+    return localStorage.getItem('accessToken');
 };
 
 /**

@@ -240,7 +240,7 @@ export const uploadExcelFile = async (
     file: File,
     onProgress?: (progress: number) => void
 ): Promise<Product[]> => {
-    const token = sessionStorage.getItem('accessToken');
+    const token = localStorage.getItem('accessToken');
     
     if (!token) {
         const error = new Error('Authentication token not found');
