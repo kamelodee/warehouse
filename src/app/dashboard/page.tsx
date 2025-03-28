@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   FaBox,
   FaUser,
@@ -18,6 +19,7 @@ import {
   FaUserTie
 } from 'react-icons/fa';
 import { withAuth } from '../components/withAuth';
+import { useLogout } from '@/app/utils/logout';
 
 // Expanded interfaces to include shipping and user metrics
 interface ProductMetrics {
@@ -117,6 +119,10 @@ interface DashboardError {
 }
 
 function DashboardPage() {
+  // Initialize logout function
+  const logout = useLogout();
+  const router = useRouter();
+
   // State management with error handling
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     productMetrics: {
@@ -206,10 +212,13 @@ function DashboardPage() {
 
       try {
         const token = localStorage.getItem('accessToken');
-         console.log("token==========")
-         console.log(token)
-        if (!token) {
-          throw new Error('No access token found. Please log in.');
+        console.log("Token from localStorage:", token);
+        
+        // Comprehensive token validation
+        if (!token || token.trim() === '') {
+          console.error('No valid token found');
+          router.push('/login');
+          return;
         }
 
         const fetchOptions = (token: string) => ({
@@ -353,6 +362,9 @@ function DashboardPage() {
       <header className="bg-white shadow-md py-4 px-6 flex justify-between items-center">
         <div className="flex items-center space-x-4">
           <h1 className="text-2xl font-bold text-gray-800">Inventory Manager App</h1>
+        </div>
+        <div className="flex items-center space-x-4">
+         
         </div>
       </header>
       <LoadingIndicator />

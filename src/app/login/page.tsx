@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { userService } from '@/app/api/userService';
 
@@ -10,7 +10,22 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-// jewhrer
+
+  // Check for existing access token on component mount
+  useEffect(() => {
+    const checkExistingToken = () => {
+      const token = localStorage.getItem('accessToken');
+      console.log('Login Page - Existing Token:', token);
+      
+      if (token) {
+        // If token exists, redirect to dashboard
+        router.push('/dashboard');
+      }
+    };
+
+    checkExistingToken();
+  }, []);
+
   const handleLogin = async () => {
     setError('');
     setIsLoading(true);

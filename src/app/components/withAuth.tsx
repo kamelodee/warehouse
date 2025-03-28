@@ -15,7 +15,8 @@ export function withAuth<P extends object>(WrappedComponent: React.ComponentType
       const checkAuthentication = () => {
         // Ensure we're in browser environment
         if (typeof window !== 'undefined') {
-          const accessToken = sessionStorage.getItem('accessToken');
+          const accessToken = localStorage.getItem('accessToken');
+          console.log('WithAuth - Access Token:', accessToken);
           
           if (!accessToken) {
             // Redirect to login if no access token

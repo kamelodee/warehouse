@@ -3,14 +3,18 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { FaCar } from 'react-icons/fa';
-
+import { useLogout } from '@/app/utils/logout';
 export default function DashboardLayout({
+  
   children,
 }: {
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+
+  // Initialize logout function
+  const logout = useLogout();
 
   const navItems = [
     { 
@@ -107,7 +111,13 @@ export default function DashboardLayout({
           </nav>
 
           <div className="p-4 border-t border-gray-200">
-            <button className="flex items-center w-full px-4 py-2 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900">
+            <button
+              onClick={() => {
+                console.log('Logout button clicked in layout');
+                logout();
+              }}
+              className="flex items-center w-full px-4 py-2 text-sm font-medium text-gray-600 rounded-lg hover:bg-gray-50 hover:text-gray-900"
+            >
               <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
