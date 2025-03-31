@@ -7,7 +7,7 @@
  * @returns The URL of the uploaded image
  */
 export const uploadImage = async (file: File, productId?: number): Promise<string> => {
-    const token = sessionStorage.getItem('accessToken');
+    const token = localStorage.getItem('accessToken');
     
     if (!token) {
         const errorMessage = 'Authentication token not found';

@@ -1,20 +1,75 @@
 'use client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { loginUser } from './utils/auth'; // Assuming you have an auth utility
 
 export default function Home() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    try {
+      const response = await loginUser(email, password);
+      
+      // Check if user has default password
+      if (response.user.defaultPassword) {
+        // Redirect to password reset page
+        router.push('/reset-password');
+        return;
+      }
+
+      // Normal login flow
+      router.push('/dashboard');
+    } catch (err) {
+      setError('Login failed. Please check your credentials.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
       <nav className="bg-transparent p-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="text-white text-2xl font-bold">Inventory Manager App</div>
-          <Link
-            href="/login"
-            className="bg-white text-indigo-600 px-6 py-2 rounded-full font-semibold hover:bg-indigo-50 transition-colors duration-200"
-          >
-            Login
-          </Link>
+          <div className="flex items-center space-x-4">
+            <form onSubmit={handleLogin} className="flex items-center space-x-2">
+              <input 
+                type="email" 
+                placeholder="Email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="px-3 py-2 rounded-md text-sm"
+                required 
+              />
+              <input 
+                type="password" 
+                placeholder="Password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="px-3 py-2 rounded-md text-sm"
+                required 
+              />
+              <button 
+                type="submit"
+                className="bg-white text-indigo-600 px-6 py-2 rounded-full font-semibold hover:bg-indigo-50 transition-colors duration-200"
+              >
+                Login
+              </button>
+            </form>
+          </div>
         </div>
       </nav>
+
+      {error && (
+        <div className="text-center text-red-500 mt-4">
+          {error}
+        </div>
+      )}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="py-20 sm:py-24 lg:py-32">
@@ -34,7 +89,6 @@ export default function Home() {
                 >
                   Login
                 </Link>
-               
               </div>
             </div>
             <div className="relative">

@@ -7,41 +7,54 @@ export interface LoginResponse {
   role: string;
   accessToken: string;
   defaultPassword: boolean;
+  user: {
+    email: string;
+    defaultPassword: boolean;
+  };
 }
 
 export interface UpdatePasswordPayload {
   password: string;
 }
 
-export const userService = {
-  /**
-   * Perform user login
-   * @param email User's email address
-   * @param password User's password
-   * @returns Promise with login response
-   */
-  login: async (email: string, password: string): Promise<LoginResponse> => {
-    try {
-      const response = await fetch('https://stock.hisense.com.gh/api/v1.0/auth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
+/**
+ * Perform user login
+ * @param email User's email address
+ * @param password User's password
+ * @returns Promise with login response
+ */
+export async function login(email: string, password: string): Promise<LoginResponse> {
+  try {
+    const response = await fetch('https://stock.hisense.com.gh/api/v1.0/auth', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Login failed');
-      }
-
-      return await response.json();
-    } catch (error) {
-      logApiError('POST', '/auth', error);
-      throw error;
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Login failed');
     }
-  },
 
+    const loginResponse = await response.json();
+    
+    // Ensure user object is included in the response
+    return {
+      ...loginResponse,
+      user: {
+        email: loginResponse.email,
+        defaultPassword: loginResponse.defaultPassword
+      }
+    };
+  } catch (error) {
+    logApiError('POST', '/auth', error);
+    throw error;
+  }
+}
+
+export const userService = {
   /**
    * Update user password
    * @param userId User's unique identifier

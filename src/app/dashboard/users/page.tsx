@@ -79,25 +79,37 @@ export default function Users() {
   });
 
   // Only include fields required for the API payload
-  const [newUser, setNewUser] = useState({
+  const [newUser, setNewUser] = useState<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+    role: string;
+    warehouseId: number;
+  }>({
     firstName: '',
     lastName: '',
     email: '',
     phoneNumber: '',
-    password: '', // Optional password field
     role: 'USER', // Default role
     warehouseId: 0
   });
 
   // Edit user state
-  const [editUser, setEditUser] = useState({
+  const [editUser, setEditUser] = useState<{
+    id: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+    role: string;
+    warehouseId: number;
+  }>({
     id: 0,
     firstName: '',
     lastName: '',
     email: '',
     phoneNumber: '',
-    password: '',
-    confirmPassword: '',
     role: '',
     warehouseId: 0
   });
@@ -392,38 +404,15 @@ export default function Users() {
   };
 
   const validateForm = () => {
-    console.log('Validating user form:', { 
-      firstName: newUser.firstName, 
-      lastName: newUser.lastName,
-      email: newUser.email,
-      phoneNumber: newUser.phoneNumber,
-      role: newUser.role,
-      hasPassword: !!newUser.password,
-      passwordLength: newUser.password?.length || 0,
-    });
+    // Remove password validation
+    if (!newUser.firstName) return 'First Name is required';
+    if (!newUser.lastName) return 'Last Name is required';
+    if (!newUser.email) return 'Email is required';
+    if (!newUser.phoneNumber) return 'Phone Number is required';
+    if (!newUser.role) return 'Role is required';
+    if (!newUser.warehouseId) return 'Warehouse is required';
 
-    // Validate required fields
-    if (!newUser.firstName || !newUser.lastName) {
-      return 'First Name and Last Name are required';
-    }
-
-    if (!newUser.email) {
-      return 'Email is required';
-    }
-
-    if (!newUser.phoneNumber) {
-      return 'Phone Number is required';
-    }
-
-    if (!newUser.role) {
-      return 'Role is required';
-    }
-
-    // Optional password validation - only check if password is provided
-    if (newUser.password && newUser.password.length < 8) {
-      return 'Password must be at least 8 characters long';
-    }
-
+    // Optional password validation removed
     return null;
   };
 
@@ -433,7 +422,6 @@ export default function Users() {
       lastName: '',
       email: '',
       phoneNumber: '',
-      password: '',
       role: 'USER',
       warehouseId: warehouses.length > 0 ? warehouses[0].id : 0
     });
@@ -592,8 +580,6 @@ export default function Users() {
         lastName: userData.lastName || '',
         email: userData.email || '',
         phoneNumber: userData.phoneNumber || '',
-        password: '',
-        confirmPassword: '',
         role: userData.role || '',
         warehouseId: userData.warehouse?.id || 0
       });
@@ -645,7 +631,6 @@ export default function Users() {
         phoneNumber: string;
         role: string;
         warehouseId: number;
-        password?: string;
       } = {
         firstName: editUser.firstName,
         lastName: editUser.lastName,
@@ -655,14 +640,8 @@ export default function Users() {
         warehouseId: editUser.warehouseId
       };
 
-      // Only include password if it was changed
-      if (editUser.password) {
-        payload.password = editUser.password;
-      }
-
       console.log('Sending user update payload:', {
         ...payload,
-        password: payload.password ? '[REDACTED]' : undefined, // Don't log actual password
         warehouseDetails: warehouses.find(w => w.id === payload.warehouseId)
       });
 
@@ -720,38 +699,14 @@ export default function Users() {
 
   // Function to validate edit form
   const validateEditForm = () => {
-    console.log('Validating edit user form:', { 
-      firstName: editUser.firstName, 
-      lastName: editUser.lastName,
-      email: editUser.email,
-      phoneNumber: editUser.phoneNumber,
-      role: editUser.role,
-      hasPassword: !!editUser.password,
-      passwordLength: editUser.password?.length || 0,
-    });
+    // Remove password validation
+    if (!editUser.firstName) return 'First Name is required';
+    if (!editUser.lastName) return 'Last Name is required';
+    if (!editUser.email) return 'Email is required';
+    if (!editUser.phoneNumber) return 'Phone Number is required';
+    if (!editUser.role) return 'Role is required';
 
-    // Validate required fields
-    if (!editUser.firstName || !editUser.lastName) {
-      return 'First Name and Last Name are required';
-    }
-
-    if (!editUser.email) {
-      return 'Email is required';
-    }
-
-    if (!editUser.phoneNumber) {
-      return 'Phone Number is required';
-    }
-
-    if (!editUser.role) {
-      return 'Role is required';
-    }
-
-    // Optional password validation - only check if password is provided
-    if (editUser.password && editUser.password.length < 8) {
-      return 'Password must be at least 8 characters long';
-    }
-
+    // Optional password validation removed
     return null;
   };
 
@@ -763,8 +718,6 @@ export default function Users() {
       lastName: '',
       email: '',
       phoneNumber: '',
-      password: '',
-      confirmPassword: '',
       role: '',
       warehouseId: 0
     });
@@ -802,7 +755,6 @@ export default function Users() {
         phoneNumber: string;
         role: string;
         warehouseId: number;
-        password?: string;
       } = {
         firstName: newUser.firstName,
         lastName: newUser.lastName,
@@ -811,11 +763,6 @@ export default function Users() {
         role: newUser.role,
         warehouseId: newUser.warehouseId
       };
-
-      // Only include password if it was provided
-      if (newUser.password) {
-        payload.password = newUser.password;
-      }
 
       console.log('Sending user creation payload:', {
         ...payload,
@@ -1298,19 +1245,6 @@ export default function Users() {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base text-gray-900"
-                  placeholder="Optional password"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Role*
                 </label>
                 <select
@@ -1531,32 +1465,6 @@ export default function Users() {
                     </button>
                   </div>
                 )}
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  New Password (leave blank to keep current)
-                </label>
-                <input
-                  type="password"
-                  value={editUser.password}
-                  onChange={(e) => setEditUser({ ...editUser, password: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base text-gray-900"
-                  placeholder="********"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Confirm New Password
-                </label>
-                <input
-                  type="password"
-                  value={editUser.confirmPassword}
-                  onChange={(e) => setEditUser({ ...editUser, confirmPassword: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-base text-gray-900"
-                  placeholder="********"
-                />
               </div>
             </div>
             

@@ -2,68 +2,49 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { userService } from '@/app/api/userService';
+import { login } from '@/app/api/userService';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  // Check for existing access token on component mount
-  useEffect(() => {
-    const checkExistingToken = () => {
-      const token = localStorage.getItem('accessToken');
-      console.log('Login Page - Existing Token:', token);
-      
-      if (token) {
-        // If token exists, redirect to dashboard
-        router.push('/dashboard');
-      }
-    };
-
-    checkExistingToken();
-  }, []);
-
-  const handleLogin = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError('');
-    setIsLoading(true);
 
     try {
-      const response = await userService.login(email, password);
+      const response = await login(email, password);
 
-      if (response.defaultPassword) {
-        localStorage.setItem('defaultPasswordUser', JSON.stringify({
-          email: response.email,
+      // Detailed logging of the entire response
+      console.log('Full login response:', JSON.stringify(response, null, 2));
+      
+      // Check for default password first
+      if (typeof window !== 'undefined' && response.user?.defaultPassword) {
+        window.localStorage.setItem('defaultPasswordUser', JSON.stringify({
+          email: response.user.email,
           defaultPassword: true
         }));
-        localStorage.setItem('user', JSON.stringify(response));
+        window.localStorage.setItem('user', JSON.stringify(response.user));
         
         router.push('/reset-password');
         return;
       }
 
+      // Ensure access token exists
       if (response.accessToken) {
-        localStorage.setItem('accessToken', response.accessToken);
-        
-        localStorage.setItem('user', JSON.stringify({
-          id: response.id,
-          email: response.email,
-          name: response.name,
-          role: response.role,
-          defaultPassword: response.defaultPassword
-        }));
-
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('accessToken', response.accessToken);
+          window.localStorage.setItem('user', JSON.stringify(response.user));
+        }
         router.push('/dashboard');
       } else {
-        throw new Error('No access token received');
+        setError('Login failed. Please try again.');
       }
     } catch (err) {
-      console.error('Login error:', err);
-      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
-    } finally {
-      setIsLoading(false);
+      setError('An error occurred during login.');
+      console.error(err);
     }
   };
 
@@ -83,10 +64,7 @@ export default function LoginPage() {
             {error}
           </div>
         )}
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          handleLogin();
-        }}>
+        <form onSubmit={handleLogin}>
           <div className="mb-4">
             <label htmlFor="email" className="block text-gray-700 text-sm font-bold mb-2">
               Email
@@ -118,14 +96,9 @@ export default function LoginPage() {
           <div className="flex items-center justify-between">
             <button
               type="submit"
-              disabled={isLoading}
-              className={`w-full py-2 px-4 rounded focus:outline-none focus:shadow-outline ${
-                isLoading 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
-              }`}
+              className="w-full py-2 px-4 rounded focus:outline-none focus:shadow-outline bg-indigo-600 text-white hover:bg-indigo-700"
             >
-              {isLoading ? 'Logging in...' : 'Login'}
+              Login
             </button>
           </div>
         </form>
