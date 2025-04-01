@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { searchShipments, deleteShipment, Shipment } from '../../api/shipmentService';
 import { searchWarehouses, Warehouse } from '../../api/warehouseService';
 import { searchVehicles, Vehicle } from '../../api/vehicleService';
-import AddShipment from './AddShipment';
+import ShipmentDetailsModal from './ShipmentDetailsModal';
 
 // Use the Shipment interface from shipmentService but ensure id is required
 interface ShipmentWithRequiredId extends Omit<Shipment, 'id'> {
@@ -16,11 +16,13 @@ const Shipments = () => {
     const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [deletingShipmentIds, setDeletingShipmentIds] = useState<number[]>([]);
-    const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
     const [warehouses, setWarehouses] = useState<{ [key: number]: Warehouse }>({});
+    const [vehicles, setVehicles] = useState<{ [key: number]: Vehicle }>({});
+    // New state for selected shipment details
+    const [selectedShipment, setSelectedShipment] = useState<ShipmentWithRequiredId | null>(null);
+
     // Loading states used in warehouse data fetching
     const [_isLoadingWarehouses, setIsLoadingWarehouses] = useState<boolean>(false); // eslint-disable-line @typescript-eslint/no-unused-vars
-    const [vehicles, setVehicles] = useState<{ [key: number]: Vehicle }>({});
     // Loading states used in vehicle data fetching
     const [_isLoadingVehicles, setIsLoadingVehicles] = useState<boolean>(false); // eslint-disable-line @typescript-eslint/no-unused-vars
    
@@ -171,10 +173,6 @@ const Shipments = () => {
         }
     };
 
-    const handleShipmentAdded = () => {
-        fetchShipments(); // Refresh the shipment list after adding a new shipment
-    };
-
     // Format date to a more readable format
     const formatDate = (dateString?: string) => {
         if (!dateString) return 'N/A';
@@ -298,12 +296,6 @@ const Shipments = () => {
     return (
         <div className="p-4">
             <h1 className="text-black font-bold mb-4">Shipments Management</h1>
-            <button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 text-white rounded p-2 mb-4">Add Shipment</button>
-            <AddShipment 
-                isOpen={isModalOpen} 
-                onClose={() => setIsModalOpen(false)} 
-                onShipmentAdded={handleShipmentAdded} 
-            />
             
             <div className="flex space-x-4 mb-4">
                 <div>
@@ -424,6 +416,12 @@ const Shipments = () => {
                                             >
                                                 {deletingShipmentIds.includes(shipment.id) ? 'Deleting...' : 'Delete'}
                                             </button>
+                                            <button 
+                                                onClick={() => setSelectedShipment(shipment)} 
+                                                className="text-blue-500 hover:text-blue-700"
+                                            >
+                                                View Details
+                                            </button>
                                         </td>
                                     </tr>
                                 ))
@@ -437,6 +435,14 @@ const Shipments = () => {
                         </tbody>
                     </table>
                 </div>
+            )}
+            {selectedShipment && (
+                <ShipmentDetailsModal 
+                    shipment={selectedShipment} 
+                    warehouses={warehouses}
+                    vehicles={vehicles}
+                    onClose={() => setSelectedShipment(null)} 
+                />
             )}
         </div>
     );

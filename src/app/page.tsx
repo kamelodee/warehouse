@@ -37,30 +37,12 @@ export default function Home() {
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="text-white text-2xl font-bold">Inventory Manager App</div>
           <div className="flex items-center space-x-4">
-            <form onSubmit={handleLogin} className="flex items-center space-x-2">
-              <input 
-                type="email" 
-                placeholder="Email" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="px-3 py-2 rounded-md text-sm"
-                required 
-              />
-              <input 
-                type="password" 
-                placeholder="Password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="px-3 py-2 rounded-md text-sm"
-                required 
-              />
-              <button 
-                type="submit"
-                className="bg-white text-indigo-600 px-6 py-2 rounded-full font-semibold hover:bg-indigo-50 transition-colors duration-200"
-              >
-                Login
-              </button>
-            </form>
+          <Link
+                  href="/login"
+                  className="inline-block bg-white text-indigo-600 px-8 py-3 rounded-full font-semibold hover:bg-indigo-50 transition-colors duration-200"
+                >
+                  Login
+                </Link>
           </div>
         </div>
       </nav>
