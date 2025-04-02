@@ -21,24 +21,25 @@ export default function LoginPage() {
       console.log('Full login response:', JSON.stringify(response, null, 2));
       
       // Check for default password first
-      if (typeof window !== 'undefined' && response.user?.defaultPassword) {
-        window.localStorage.setItem('defaultPasswordUser', JSON.stringify({
-          email: response.user.email,
-          defaultPassword: true
-        }));
-        window.localStorage.setItem('user', JSON.stringify(response.user));
-        
-        router.push('/reset-password');
-        return;
-      }
+    
 
       // Ensure access token exists
       if (response.accessToken) {
         if (typeof window !== 'undefined') {
+          window.localStorage.setItem('defaultPasswordUser', JSON.stringify({
+            email: response.user.email,
+            defaultPassword: response.user.defaultPassword
+          }));
           window.localStorage.setItem('accessToken', response.accessToken);
           window.localStorage.setItem('user', JSON.stringify(response.user));
         }
-        router.push('/dashboard');
+
+        if (response.user.defaultPassword === true) {
+          router.push('/reset-password');
+          return;
+        } else {
+          router.push('/dashboard');
+        }
       } else {
         setError('Login failed. Please try again.');
       }

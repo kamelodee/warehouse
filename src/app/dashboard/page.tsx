@@ -132,12 +132,63 @@ interface DashboardError {
   endpoint?: string;
 }
 
+const prepareFetchOptions = (token: string) => ({
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  },
+  body: JSON.stringify({
+    size: 1000,
+    number: 0,
+    includeMetrics: true
+  })
+});
+
+const normalizeShipment = (shipment: Partial<Shipment>): RecentShipment => ({
+  id: shipment.id ? Number(shipment.id) : Math.floor(Math.random() * 1000),
+  referenceNumber: shipment.referenceNumber || `REF-${Math.random().toString(36).substr(2, 6)}`,
+  status: (shipment.status as RecentShipment['status']) || 'pending',
+  destination: shipment.destination || 'Unknown',
+  date: shipment.date || new Date().toISOString()
+});
+
+const generateDefaultShipments = (): RecentShipment[] => [
+  { 
+    id: 1, 
+    referenceNumber: 'REF-001', 
+    status: 'in_transit', 
+    destination: 'Accra', 
+    date: new Date().toISOString() 
+  },
+  { 
+    id: 2, 
+    referenceNumber: 'REF-002', 
+    status: 'delivered', 
+    destination: 'Kumasi', 
+    date: new Date().toISOString() 
+  }
+];
+
+const extractShippingMetrics = (shippingData: any): ShippingMetrics => ({
+  totalShipments: shippingData.totalElements || 0,
+  inTransitShipments: shippingData.inTransitShipments || 0,
+  deliveredShipments: shippingData.deliveredShipments || 0,
+  pendingShipments: shippingData.pendingShipments || 0,
+  receivedShipments: shippingData.receivedShipments || 0,
+  transferredShipments: shippingData.transferredShipments || 0,
+  leftShipments: shippingData.leftShipments || 0,
+  onHoldShipments: shippingData.onHoldShipments || 0,
+  cancelledShipments: shippingData.cancelledShipments || 0,
+  totalCompleteShipments: shippingData.totalCompleteShipments || 0,
+  totalIncompleteShipments: shippingData.totalIncompleteShipments || 0,
+  completedShipments: shippingData.completedShipments || 0
+});
+
 function DashboardPage() {
-  // Initialize logout function
   const logout = useLogout();
   const router = useRouter();
 
-  // State management with error handling
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     productMetrics: {
       totalProducts: 0,
@@ -184,11 +235,9 @@ function DashboardPage() {
     recentShipments: []
   });
 
-  // Centralized error state
   const [errors, setErrors] = useState<DashboardError[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Centralized error logging function
   const logError = (error: Partial<DashboardError>) => {
     const newError: DashboardError = {
       type: error.type || 'unknown',
@@ -201,7 +250,6 @@ function DashboardPage() {
     console.error('Dashboard Error:', newError);
   };
 
-  // Safe fetch wrapper with comprehensive error handling
   const safeFetch = async (url: string, options: RequestInit) => {
     try {
       const response = await fetch(url, options);
@@ -218,7 +266,6 @@ function DashboardPage() {
         endpoint: url
       });
 
-      // Return a safe default object to prevent total failure
       return {
         totalElements: 0,
         content: [],
@@ -236,114 +283,29 @@ function DashboardPage() {
         const token = localStorage.getItem('accessToken');
         console.log("Token from localStorage:", token);
         
-        // Comprehensive token validation
         if (!token || token.trim() === '') {
           console.error('No valid token found');
           router.push('/login');
           return;
         }
 
-        const fetchOptions = (token: string) => ({
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            size: 1000,
-            number: 0,
-            includeMetrics: true
-          })
-        });
+        const fetchOptions = prepareFetchOptions(token);
 
-        // Parallel API calls with safe fetch
-        const [
-          productData,
-          userData,
-          shippingData,
-          warehouseData
-        ] = await Promise.all([
-          safeFetch('https://stock.hisense.com.gh/api/v1.0/products/search', fetchOptions(token)),
-          safeFetch('https://stock.hisense.com.gh/api/v1.0/users/search', fetchOptions(token)),
-          safeFetch('https://stock.hisense.com.gh/api/v1.0/shipments/search', fetchOptions(token)),
-          safeFetch('https://stock.hisense.com.gh/api/v1.0/warehouses/search', fetchOptions(token))
+        const [shippingData] = await Promise.all([
+          safeFetch('https://stock.hisense.com.gh/api/v1.0/shipments/search', fetchOptions)
         ]);
 
-        // Log the full shipment data for debugging
         console.log('Shipping Data Payload:', JSON.stringify(shippingData, null, 2));
 
-        // Prepare shipments list
-        const recentShipments = shippingData.content ?
-          shippingData.content.slice(0, 5).map((shipment: Shipment) => ({
-            id: shipment.id || Math.random().toString(36).substr(2, 9),
-            referenceNumber: shipment.referenceNumber || `REF-${Math.random().toString(36).substr(2, 6)}`,
-            status: shipment.status || 'unknown',
-            destination: shipment.destination || 'Unknown',
-            date: shipment.date || new Date().toISOString()
-          })) : 
-          [
-            { 
-              id: '1', 
-              referenceNumber: 'REF-001', 
-              status: 'in_transit', 
-              destination: 'Accra', 
-              date: new Date().toISOString() 
-            },
-            { 
-              id: '2', 
-              referenceNumber: 'REF-002', 
-              status: 'delivered', 
-              destination: 'Kumasi', 
-              date: new Date().toISOString() 
-            }
-          ];
+        const recentShipments = shippingData.content
+          ? shippingData.content.slice(0, 5).map(normalizeShipment)
+          : generateDefaultShipments();
 
-        // Update dashboard data with safe defaults
-        setDashboardData({
-          productMetrics: {
-            totalProducts: productData.totalElements || 0,
-            activeProducts: productData.activeProducts || 0,
-            lowStockProducts: productData.lowStockProducts || 0,
-            outOfStockProducts: productData.outOfStockProducts || 0
-          },
-          userMetrics: {
-            totalUsers: userData.totalElements || 0,
-            users: userData.content || []
-          },
-          shippingMetrics: {
-            totalShipments: shippingData.totalElements || 0,
-            inTransitShipments: shippingData.inTransitShipments || 0,
-            deliveredShipments: shippingData.deliveredShipments || 0,
-            pendingShipments: shippingData.pendingShipments || 0,
-            receivedShipments: shippingData.receivedShipments || 0,
-            transferredShipments: shippingData.transferredShipments || 0,
-            leftShipments: shippingData.leftShipments || 0,
-            onHoldShipments: shippingData.onHoldShipments || 0,
-            cancelledShipments: shippingData.cancelledShipments || 0,
-            totalCompleteShipments: shippingData.totalCompleteShipments || 0,
-            totalIncompleteShipments: shippingData.totalIncompleteShipments || 0,
-            completedShipments: shippingData.completedShipments || 0
-          },
-          warehouseMetrics: {
-            totalWarehouses: warehouseData.totalElements || 0,
-            activeWarehouses: warehouseData.activeWarehouses || 0,
-            storageCapacity: warehouseData.totalStorageCapacity || 0,
-            occupiedSpace: warehouseData.occupiedStorageSpace || 0
-          },
-          inventoryMetrics: {
-            totalInventoryValue: productData.totalInventoryValue || 0,
-            lowStockItems: productData.lowStockProducts || 0
-          },
-          orderMetrics: {
-            totalOrders: 0 // Placeholder as endpoint is not available
-          },
-          supplierMetrics: {
-            totalSuppliers: 0 // Placeholder as endpoint is not available
-          },
-          productCategories: productData.categories || [],
-          recentProducts: productData.recentProducts || [],
+        setDashboardData(prev => ({
+          ...prev,
+          shippingMetrics: extractShippingMetrics(shippingData),
           recentShipments: recentShipments
-        });
+        }));
 
       } catch (err) {
         logError({

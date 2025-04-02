@@ -39,15 +39,9 @@ export async function login(email: string, password: string): Promise<LoginRespo
     }
 
     const loginResponse = await response.json();
-    
+    console.log('Login response:', JSON.stringify(loginResponse, null, 2));
     // Ensure user object is included in the response
-    return {
-      ...loginResponse,
-      user: {
-        email: loginResponse.email,
-        defaultPassword: loginResponse.defaultPassword
-      }
-    };
+    return loginResponse;
   } catch (error) {
     logApiError('POST', '/auth', error);
     throw error;
