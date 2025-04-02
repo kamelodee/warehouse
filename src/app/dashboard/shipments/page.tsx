@@ -1,14 +1,45 @@
 'use client';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { searchShipments, deleteShipment, Shipment } from '../../api/shipmentService';
+import { searchShipments, deleteShipment, Shipment, ProductSerialNumber } from '../../api/shipmentService';
 import { searchWarehouses, Warehouse } from '../../api/warehouseService';
 import { searchVehicles, Vehicle } from '../../api/vehicleService';
 import ShipmentDetailsModal from './ShipmentDetailsModal';
+import { FaTrash, FaEye } from 'react-icons/fa';
 
 // Use the Shipment interface from shipmentService but ensure id is required
-interface ShipmentWithRequiredId extends Omit<Shipment, 'id'> {
+interface ShipmentWithRequiredId {
     id: number;
+    referenceNumber: string;
+    type: string;
+    status?: string;
+    driverName?: string;
+    notes?: string;
+    vehicleId?: number;
+    sourceWarehouseId?: number;
+    destinationWarehouseId?: number;
+    stocks?: Array<{
+        quantity: number;
+        quantityReceived: number;
+        productId: number;
+        productSerialNumbers: ProductSerialNumber[];
+        productSerialNumbersReceived: ProductSerialNumber[];
+    }>;
+    createdAt?: string;
 }
+
+const convertToShipmentWithRequiredId = (shipment: Shipment): ShipmentWithRequiredId => ({
+    id: shipment.id ?? 0,
+    referenceNumber: shipment.referenceNumber ?? '',
+    type: shipment.type ?? '',
+    status: shipment.status ?? '',
+    driverName: shipment.driverName ?? '',
+    notes: shipment.notes ?? '',
+    vehicleId: shipment.vehicleId,
+    sourceWarehouseId: shipment.sourceWarehouseId,
+    destinationWarehouseId: shipment.destinationWarehouseId,
+    stocks: shipment.stocks ?? [],
+    createdAt: shipment.createdAt
+});
 
 const Shipments = () => {
     const [shipments, setShipments] = useState<ShipmentWithRequiredId[]>([]);
@@ -34,6 +65,7 @@ const Shipments = () => {
     const [totalPages, setTotalPages] = useState<number>(0);
     // Total elements used for internal calculations
     const [_totalElements, setTotalElements] = useState<number>(0); // eslint-disable-line @typescript-eslint/no-unused-vars
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         const storedToken = localStorage.getItem('accessToken');
@@ -107,29 +139,26 @@ const Shipments = () => {
         setError(null);
         
         try {
-            const data = await searchShipments({
-                page,
-                size,
-                sort,
-                sortField
+            const response = await searchShipments({ 
+                page, 
+                size, 
+                sort, 
+                sortField, 
+                searchQuery 
             });
             
-            // Filter out any shipments without an id
-            const shipmentsWithId = data.content
-                .filter((shipment): shipment is ShipmentWithRequiredId => 
-                    shipment.id !== undefined
-                );
-            
-            setShipments(shipmentsWithId);
-            setTotalPages(data.totalPages);
-            setTotalElements(data.totalElements);
+            // Convert Shipment[] to ShipmentWithRequiredId[]
+            const convertedShipments = response.content.map(convertToShipmentWithRequiredId);
+            setShipments(convertedShipments);
+            setTotalPages(response.totalPages);
+            setTotalElements(response.totalElements);
         } catch (error) {
             console.error('Error fetching shipments:', error);
             setError(error as Error);
         } finally {
             setIsLoading(false);
         }
-    }, [token, page, size, sort, sortField]);
+    }, [token, page, size, sort, sortField, searchQuery]);
 
     useEffect(() => {
         if (token) {
@@ -270,8 +299,6 @@ const Shipments = () => {
         });
     }, [shipments, sortField, sort]);
 
-    const [searchQuery, setSearchQuery] = useState('');
-
     const filteredShipments = useMemo(() => {
         if (!sortedShipments) return [];
 
@@ -408,19 +435,19 @@ const Shipments = () => {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{getVehicleName(shipment.vehicleId)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{countStockItems(shipment)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(shipment.createdAt)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 space-x-2">
                                             <button 
                                                 onClick={() => handleDelete(shipment.id)} 
-                                                className={`${deletingShipmentIds.includes(shipment.id) ? 'text-gray-400' : 'text-red-500 hover:text-red-700'}`}
+                                                className={`inline-flex items-center gap-1 ${deletingShipmentIds.includes(shipment.id) ? 'text-gray-400' : 'text-red-500 hover:text-red-700'}`}
                                                 disabled={deletingShipmentIds.includes(shipment.id)}
                                             >
-                                                {deletingShipmentIds.includes(shipment.id) ? 'Deleting...' : 'Delete'}
+                                                {deletingShipmentIds.includes(shipment.id) ? 'Deleting...' : <><FaTrash /> Delete</>}
                                             </button>
                                             <button 
                                                 onClick={() => setSelectedShipment(shipment)} 
-                                                className="text-blue-500 hover:text-blue-700"
+                                                className="inline-flex items-center gap-1 text-blue-500 hover:text-blue-700"
                                             >
-                                                View Details
+                                                <FaEye /> View 
                                             </button>
                                         </td>
                                     </tr>
@@ -438,9 +465,30 @@ const Shipments = () => {
             )}
             {selectedShipment && (
                 <ShipmentDetailsModal 
-                    shipment={selectedShipment} 
-                    warehouses={warehouses}
-                    vehicles={vehicles}
+                    id={selectedShipment.id}
+                    referenceNumber={selectedShipment.referenceNumber || ''}
+                    type={selectedShipment.type}
+                    status={selectedShipment.status || ''}
+                    driverName={selectedShipment.driverName || ''}
+                    notes={selectedShipment.notes || undefined}
+                    vehicle={selectedShipment.vehicleId ? {
+                        id: vehicles[selectedShipment.vehicleId]?.id || 0,
+                        code: vehicles[selectedShipment.vehicleId]?.code || '',
+                        identificationNumber: vehicles[selectedShipment.vehicleId]?.identificationNumber
+                    } : undefined}
+                    sourceWarehouse={selectedShipment.sourceWarehouseId ? {
+                        id: warehouses[selectedShipment.sourceWarehouseId]?.id || 0,
+                        code: warehouses[selectedShipment.sourceWarehouseId]?.code || '',
+                        name: warehouses[selectedShipment.sourceWarehouseId]?.name || '',
+                        location: warehouses[selectedShipment.sourceWarehouseId]?.location || ''
+                    } : undefined}
+                    destinationWarehouse={selectedShipment.destinationWarehouseId ? {
+                        id: warehouses[selectedShipment.destinationWarehouseId]?.id || 0,
+                        code: warehouses[selectedShipment.destinationWarehouseId]?.code || '',
+                        name: warehouses[selectedShipment.destinationWarehouseId]?.name || '',
+                        location: warehouses[selectedShipment.destinationWarehouseId]?.location || ''
+                    } : undefined}
+                    stocks={selectedShipment.stocks || []}
                     onClose={() => setSelectedShipment(null)} 
                 />
             )}

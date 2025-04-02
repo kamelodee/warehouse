@@ -33,6 +33,7 @@ interface ShipmentSearchParams {
     size?: number;
     sort?: string;
     sortField?: string;
+    searchQuery?: string;
 }
 
 interface ShipmentSearchResponse {
@@ -177,7 +178,7 @@ const handleResponseWithPossibleNoContent = async <T>(response: Response, method
  * Search for shipments with pagination and sorting
  */
 export const searchShipments = async (params: ShipmentSearchParams = {}): Promise<ShipmentSearchResponse> => {
-    const { page = 0, size = 10, sort = 'ASC', sortField = 'id' } = params;
+    const { page = 0, size = 10, sort = 'ASC', sortField = 'id', searchQuery } = params;
     const token = getToken();
     
     if (!token) {
@@ -191,7 +192,7 @@ export const searchShipments = async (params: ShipmentSearchParams = {}): Promis
     
     try {
         const response = await fetch(
-            `${API_BASE_URL}/shipments/search?page=${page}&size=${size}&sort=${sort}&sortField=${sortField}`,
+            `${API_BASE_URL}/shipments/search?page=${page}&size=${size}&sort=${sort}&sortField=${sortField}${searchQuery ? `&searchQuery=${searchQuery}` : ''}`,
             {
                 method: 'POST',
                 headers: getHeaders(),
@@ -210,6 +211,7 @@ export const searchShipments = async (params: ShipmentSearchParams = {}): Promis
             size,
             sort,
             sortField,
+            searchQuery,
             timestamp: new Date().toISOString()
         });
         

@@ -1,29 +1,38 @@
 import React from 'react';
 import { FaTruck, FaCheckCircle, FaClipboardList, FaBox } from 'react-icons/fa';
 import { ProductSerialNumber } from '../../api/shipmentService';
-import { Warehouse } from '../../api/warehouseService';
-import { Vehicle } from '../../api/vehicleService';
 
 interface ShipmentDetailsModalProps {
-  shipment: {
+  id: number;
+  referenceNumber: string;
+  type: string;
+  status?: string;
+  driverName: string;
+  notes?: string;
+  vehicle?: {
     id: number;
-    referenceNumber?: string | null;
-    driverName: string;
-    status?: string;
-    deliveryRemarks?: string;
-    vehicle?: Vehicle;
-    sourceWarehouse?: Warehouse;
-    destinationWarehouse?: Warehouse;
-    stocks: Array<{
-      quantity: number;
-      quantityReceived: number;
-      productId: number;
-      productSerialNumbers: ProductSerialNumber[];
-      productSerialNumbersReceived: ProductSerialNumber[];
-    }>;
+    code: string;
+    identificationNumber?: string | null;
   };
-  warehouses: { [key: number]: Warehouse };
-  vehicles: { [key: number]: Vehicle };
+  sourceWarehouse?: {
+    id: number;
+    code: string;
+    name: string;
+    location: string;
+  };
+  destinationWarehouse?: {
+    id: number;
+    code: string;
+    name: string;
+    location: string;
+  };
+  stocks: Array<{
+    quantity: number;
+    quantityReceived: number;
+    productId: number;
+    productSerialNumbers: ProductSerialNumber[];
+    productSerialNumbersReceived: ProductSerialNumber[];
+  }>;
   onClose: () => void;
 }
 
@@ -42,7 +51,19 @@ const getStatusBadgeColor = (status?: string | null) => {
   }
 };
 
-const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({ shipment, onClose }) => {
+const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({ 
+  id, 
+  referenceNumber, 
+  type, 
+  status, 
+  driverName, 
+  notes, 
+  vehicle, 
+  sourceWarehouse, 
+  destinationWarehouse, 
+  stocks, 
+  onClose 
+}) => {
   const renderStocksTable = () => {
     return (
       <table className="w-full border-collapse text-black text-xs">
@@ -56,7 +77,7 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({ shipment, o
           </tr>
         </thead>
         <tbody>
-          {shipment.stocks.map((stock, index) => (
+          {stocks.map((stock, index) => (
             <tr key={index} className="border-b">
               <td className="border p-1">{stock.productId}</td>
               <td className="border p-1">{stock.quantity}</td>
@@ -79,68 +100,52 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({ shipment, o
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-800">Shipment Details</h2>
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+            <FaTruck className="mr-3 text-indigo-600" /> 
+            Shipment Details
+          </h2>
           <button 
-            onClick={onClose} 
-            className="text-gray-600 hover:text-gray-900"
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
           >
             ✕
           </button>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="flex items-center mb-2">
-              <FaTruck className="mr-2 text-indigo-600" />
-              <span className="font-semibold text-gray-700">Vehicle</span>
-            </div>
-            <p className="text-gray-900">{shipment.vehicle?.code || 'Unassigned'}</p>
+          <div>
+            <p className="text-sm text-gray-600">Reference Number</p>
+            <p className="font-semibold">{referenceNumber}</p>
           </div>
-
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="flex items-center mb-2">
-              <FaCheckCircle className="mr-2 text-indigo-600" />
-              <span className="font-semibold text-gray-700">Status</span>
-            </div>
-            <p className={`font-semibold ${getStatusBadgeColor(shipment.status)}`}>
-              {shipment.status ?? 'N/A'}
+          <div>
+            <p className="text-sm text-gray-600">Status</p>
+            <p className={`font-semibold ${getStatusBadgeColor(status)}`}>
+              {status?.toUpperCase() || 'UNKNOWN'}
             </p>
           </div>
-
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="flex items-center mb-2">
-              <FaTruck className="mr-2 text-indigo-600" />
-              <span className="font-semibold text-gray-700">Source Warehouse</span>
-            </div>
-            <p className="text-gray-900">
-              {shipment.sourceWarehouse?.name} ({shipment.sourceWarehouse?.code})
+          <div>
+            <p className="text-sm text-gray-600">Source Warehouse</p>
+            <p className="font-semibold">
+              {sourceWarehouse?.name || 'N/A'}
             </p>
-            <p className="text-gray-600">{shipment.sourceWarehouse?.location}</p>
           </div>
-
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="flex items-center mb-2">
-              <FaTruck className="mr-2 text-indigo-600" />
-              <span className="font-semibold text-gray-700">Destination Warehouse</span>
-            </div>
-            <p className="text-gray-900">
-              {shipment.destinationWarehouse?.name} ({shipment.destinationWarehouse?.code})
+          <div>
+            <p className="text-sm text-gray-600">Destination Warehouse</p>
+            <p className="font-semibold">
+              {destinationWarehouse?.name || 'N/A'}
             </p>
-            <p className="text-gray-600">{shipment.destinationWarehouse?.location}</p>
           </div>
-
-          {shipment.deliveryRemarks && (
-            <div className="bg-gray-50 p-4 rounded-lg col-span-2">
-              <div className="flex items-center mb-2">
-                <FaClipboardList className="mr-2 text-indigo-600" />
-                <span className="font-semibold text-gray-700">Delivery Remarks</span>
-              </div>
-              <p className="text-gray-900">{shipment.deliveryRemarks}</p>
-            </div>
-          )}
+          <div>
+            <p className="text-sm text-gray-600">Driver</p>
+            <p className="font-semibold">{driverName || 'N/A'}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Vehicle</p>
+            <p className="font-semibold">{vehicle?.code || 'N/A'}</p>
+          </div>
         </div>
 
         <div className="bg-gray-50 p-4 rounded-lg">
@@ -150,6 +155,14 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({ shipment, o
           </div>
           {renderStocksTable()}
         </div>
+
+        {/* Delivery Remarks */}
+        {notes && (
+          <div className="bg-gray-50 p-4 rounded-md">
+            <h3 className="text-sm font-semibold text-gray-700 mb-2">Delivery Notes</h3>
+            <p className="text-sm text-gray-600">{notes}</p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { FaCar } from 'react-icons/fa';
+import { FaCar, FaUser, FaSignOutAlt, FaCog } from 'react-icons/fa';
 import { useLogout } from '@/app/utils/logout';
 
 export default function DashboardLayout({
@@ -12,13 +12,18 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
-        setUser(JSON.parse(storedUser));
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (error) {
+          console.error('Error parsing user from local storage', error);
+        }
       }
     }
   }, []);
@@ -92,14 +97,8 @@ export default function DashboardLayout({
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between h-16 px-4 bg-indigo-600">
             <span className="text-xl font-bold text-white">Inventory Manager App</span>
-            <button 
-              onClick={() => setSidebarOpen(false)}
-              className="p-1 text-white hover:bg-indigo-500 rounded-md lg:hidden"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            
+            
           </div>
           
           <nav className="flex-1 px-4 space-y-1 overflow-y-auto py-4">
@@ -167,13 +166,36 @@ export default function DashboardLayout({
               </div>
               <div className="flex items-center">
                 <div className="relative">
-                  <button className="flex items-center text-gray-500 hover:text-gray-700">
-                    <span className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </span>
-                  </button>
+                <div className="relative">
+              <button 
+                onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                className="p-1 text-white hover:bg-indigo-600 bg-indigo-500 rounded-md flex items-center"
+              >
+                <FaUser className="w-6 h-6" />
+              </button>
+              
+              {isUserDropdownOpen && user && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white border rounded-md shadow-lg z-50">
+                  <div className="px-4 py-3 border-b">
+                    <p className="text-sm font-medium text-gray-900">{user.name || 'User'}</p>
+                    <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                  </div>
+                  <div className="py-1">
+                    
+                    <button 
+                      onClick={() => {
+                        logout();
+                        setIsUserDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                    >
+                      <FaSignOutAlt className="mr-3 h-5 w-5 text-red-400" />
+                      Sign out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
                 </div>
               </div>
             </div>
