@@ -13,6 +13,7 @@
   "dependencies": {
     "@types/jsonwebtoken": "^9.0.9",
     "axios": "^1.8.4",
+    "goober": "^2.1.16",
     "jsonwebtoken": "^9.0.2",
     "marked": "^15.0.7",
     "next": "15.1.7",
@@ -20,6 +21,7 @@
     "node-fetch": "^3.3.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-hot-toast": "^2.5.2",
     "react-icons": "^5.5.0",
     "warehouse": "file:",
     "xlsx": "^0.18.5",

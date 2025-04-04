@@ -6,26 +6,51 @@ export interface ProductSerialNumber {
 }
 
 export interface ShipmentStock {
+    id: {
+        shipmentId: number | null;
+        productId: number;
+    };
     quantity: number;
-    quantityReceived: number;
-    productId: number;
+    quantityReceived: number | null;
+    product: {
+        id: number;
+        code: string;
+        name: string;
+        category: string | null;
+        serialized: boolean;
+        barcodes: string[];
+    };
     productSerialNumbers: ProductSerialNumber[];
     productSerialNumbersReceived: ProductSerialNumber[];
 }
 
 export interface Shipment {
-    referenceNumber: string;
-    sourceWarehouseId: number;
-    destinationWarehouseId: number;
-    driverName: string;
-    vehicleId: number;
-    stocks: ShipmentStock[];
+    id: number;
+    referenceNumber: string | null;
     type?: string;
-    status?: string;
+    driverName: string | null;
+    status: string | null;
+    completeStatus: string | null;
+    deliveryRemarks: string | null;
+    vehicle: {
+        id: number;
+        code: string;
+        identificationNumber: string | null;
+    } | null;
+    sourceWarehouse: {
+        id: number;
+        code: string;
+        name: string;
+        location: string;
+    } | null;
+    destinationWarehouse: {
+        id: number;
+        code: string;
+        name: string;
+        location: string;
+    } | null;
+    stocks: ShipmentStock[];
     notes?: string;
-    id?: number;
-    createdAt?: string;
-    updatedAt?: string;
 }
 
 interface ShipmentSearchParams {

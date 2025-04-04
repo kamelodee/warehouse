@@ -35,7 +35,7 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
       <nav className="bg-transparent p-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="text-white text-2xl font-bold">Inventory Manager App</div>
+          <div className="text-white text-2xl font-bold">Inventory Management System (IMS)</div>
           <div className="flex items-center space-x-4">
           <Link
                   href="/login"
@@ -58,7 +58,7 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
-                Inventory Manager App
+                Inventory Management System (IMS)
               </h1>
               <p className="text-lg sm:text-xl text-white/90 mb-8">
                 Streamline your inventory, manage products, and track users all in one place.
@@ -102,7 +102,7 @@ export default function Home() {
       <footer className="bg-white/10 backdrop-blur-lg mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center text-white/70">
-            <p> 2025 Inventory Manager App. All rights reserved.</p>
+            <p> 2025 Inventory management system (IMS). All rights reserved.</p>
           </div>
         </div>
       </footer>

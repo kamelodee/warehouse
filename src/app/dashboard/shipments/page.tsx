@@ -1,48 +1,73 @@
 'use client';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { searchShipments, deleteShipment, Shipment, ProductSerialNumber } from '../../api/shipmentService';
+import { searchShipments, deleteShipment, updateShipment, Shipment, ProductSerialNumber } from '../../api/shipmentService';
 import { searchWarehouses, Warehouse } from '../../api/warehouseService';
 import { searchVehicles, Vehicle } from '../../api/vehicleService';
 import ShipmentDetailsModal from './ShipmentDetailsModal';
 import { FaTrash, FaEye } from 'react-icons/fa';
+import toast, { Toaster } from 'react-hot-toast'; // Update toast import
 
 // Use the Shipment interface from shipmentService but ensure id is required
 interface ShipmentWithRequiredId {
     id: number;
     referenceNumber: string;
     type: string;
-    status?: string;
-    driverName?: string;
-    notes?: string;
-    vehicleId?: number;
-    sourceWarehouseId?: number;
-    destinationWarehouseId?: number;
-    stocks?: Array<{
+    status: string;
+    driverName: string;
+    notes: string;
+    vehicleId: number;
+    sourceWarehouseId: number;
+    destinationWarehouseId: number;
+    stocks: {
         quantity: number;
         quantityReceived: number;
         productId: number;
         productSerialNumbers: ProductSerialNumber[];
         productSerialNumbersReceived: ProductSerialNumber[];
-    }>;
-    createdAt?: string;
+    }[];
+    quantity: number;
+    quantityReceived: number;
+    productId: number;
+    productSerialNumbers: ProductSerialNumber[];
+    productSerialNumbersReceived: ProductSerialNumber[];
 }
 
-const convertToShipmentWithRequiredId = (shipment: Shipment): ShipmentWithRequiredId => ({
-    id: shipment.id ?? 0,
-    referenceNumber: shipment.referenceNumber ?? '',
-    type: shipment.type ?? '',
-    status: shipment.status ?? '',
-    driverName: shipment.driverName ?? '',
-    notes: shipment.notes ?? '',
-    vehicleId: shipment.vehicleId,
-    sourceWarehouseId: shipment.sourceWarehouseId,
-    destinationWarehouseId: shipment.destinationWarehouseId,
-    stocks: shipment.stocks ?? [],
-    createdAt: shipment.createdAt
-});
+const convertToShipmentWithRequiredId = (shipment: Shipment): Shipment => {
+    // Ensure all properties from Shipment interface are present
+    return {
+        id: shipment.id ?? 0,
+        referenceNumber: shipment.referenceNumber ?? '',
+        type: shipment.type ?? '',
+        status: shipment.status ?? null,
+        driverName: shipment.driverName ?? null,
+        completeStatus: shipment.completeStatus ?? null,
+        deliveryRemarks: shipment.deliveryRemarks ?? null,
+        vehicle: shipment.vehicle ?? null,
+        sourceWarehouse: shipment.sourceWarehouse ?? null,
+        destinationWarehouse: shipment.destinationWarehouse ?? null,
+        stocks: shipment.stocks?.filter(stock => 
+            stock && stock.product && stock.product.id !== undefined
+        ).map(stock => ({
+            id: stock.id ?? { shipmentId: null, productId: stock.product.id },
+            quantity: stock.quantity ?? 0,
+            quantityReceived: stock.quantityReceived ?? 0,
+            product: stock.product ?? { 
+                id: 0, 
+                code: '', 
+                name: '', 
+                category: null, 
+                serialized: false, 
+                barcodes: [] 
+            },
+            productSerialNumbers: stock.productSerialNumbers ?? [],
+            productSerialNumbersReceived: stock.productSerialNumbersReceived ?? []
+        })) ?? [],
+        notes: shipment.notes ?? undefined
+    };
+};
 
 const Shipments = () => {
-    const [shipments, setShipments] = useState<ShipmentWithRequiredId[]>([]);
+    const [shipments, setShipments] = useState<Shipment[]>([]);
     const [error, setError] = useState<Error | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -50,7 +75,7 @@ const Shipments = () => {
     const [warehouses, setWarehouses] = useState<{ [key: number]: Warehouse }>({});
     const [vehicles, setVehicles] = useState<{ [key: number]: Vehicle }>({});
     // New state for selected shipment details
-    const [selectedShipment, setSelectedShipment] = useState<ShipmentWithRequiredId | null>(null);
+    const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
 
     // Loading states used in warehouse data fetching
     const [_isLoadingWarehouses, setIsLoadingWarehouses] = useState<boolean>(false); // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -147,7 +172,7 @@ const Shipments = () => {
                 searchQuery 
             });
             
-            // Convert Shipment[] to ShipmentWithRequiredId[]
+            // Convert Shipment[] to Shipment[]
             const convertedShipments = response.content.map(convertToShipmentWithRequiredId);
             setShipments(convertedShipments);
             setTotalPages(response.totalPages);
@@ -202,6 +227,41 @@ const Shipments = () => {
         }
     };
 
+    const handleUpdateShipment = async (shipmentData: Shipment) => {
+        try {
+            const updatedShipment = await updateShipment(shipmentData.id, {
+                id: shipmentData.id,
+                completeStatus: shipmentData.completeStatus,
+                deliveryRemarks: shipmentData.deliveryRemarks,
+                referenceNumber: shipmentData.referenceNumber,
+                sourceWarehouse: shipmentData.sourceWarehouse,
+                destinationWarehouse: shipmentData.destinationWarehouse,
+                driverName: shipmentData.driverName,
+                vehicle: shipmentData.vehicle,
+                stocks: shipmentData.stocks.map(stock => ({
+                    id: {
+                        shipmentId: null,
+                        productId: stock.product.id
+                    },
+                    productId: stock.product.id,
+                    quantity: stock.quantity,
+                    quantityReceived: stock.quantityReceived,
+                    product: stock.product,
+                    productSerialNumbers: stock.productSerialNumbers,
+                    productSerialNumbersReceived: stock.productSerialNumbersReceived
+                })),
+                status: shipmentData.status,
+                notes: shipmentData.deliveryRemarks || undefined
+            });
+            
+            toast.success('Shipment updated successfully');
+            await fetchShipments();
+        } catch (error) {
+            console.error('Failed to update shipment:', error);
+            toast.error('Failed to update shipment');
+        }
+    };
+
     // Format date to a more readable format
     const formatDate = (dateString?: string) => {
         if (!dateString) return 'N/A';
@@ -248,7 +308,7 @@ const Shipments = () => {
     };
 
     // Count stock items in a shipment
-    const countStockItems = (shipment: ShipmentWithRequiredId) => {
+    const countStockItems = (shipment: Shipment) => {
         return shipment.stocks?.length || 0;
     };
 
@@ -289,10 +349,6 @@ const Shipments = () => {
                     return sort === 'ASC'
                         ? (a.status || '').localeCompare(b.status || '')
                         : (b.status || '').localeCompare(a.status || '');
-                case 'createdAt':
-                    return sort === 'ASC'
-                        ? new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
-                        : new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
                 default:
                     return 0;
             }
@@ -348,7 +404,6 @@ const Shipments = () => {
                         <option value="referenceNumber">Reference Number</option>
                         <option value="type">Type</option>
                         <option value="status">Status</option>
-                        <option value="createdAt">Created Date</option>
                     </select>
                 </div>
                 <div>
@@ -405,15 +460,13 @@ const Shipments = () => {
                         <thead className="bg-gray-50">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference Number</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                               
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destination</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Driver</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vehicle</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock Items</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
@@ -422,27 +475,19 @@ const Shipments = () => {
                                 paginatedShipments.map((shipment, index) => (
                                     <tr key={shipment.id} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-gray-100' : ''}`}> 
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{shipment.id}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{shipment.referenceNumber || 'N/A'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{getShipmentTypeDisplay(shipment.type)}</td>
+                                        
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                                             <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeColor(shipment.status)}`}>
                                                 {shipment.status || 'Unknown'}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{getWarehouseName(shipment.sourceWarehouseId)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{getWarehouseName(shipment.destinationWarehouseId)}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{getWarehouseName(shipment.sourceWarehouse?.id)}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{getWarehouseName(shipment.destinationWarehouse?.id)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{shipment.driverName || 'N/A'}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{getVehicleName(shipment.vehicleId)}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{getVehicleName(shipment.vehicle?.id)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{countStockItems(shipment)}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(shipment.createdAt)}</td>
+                                        
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 space-x-2">
-                                            <button 
-                                                onClick={() => handleDelete(shipment.id)} 
-                                                className={`inline-flex items-center gap-1 ${deletingShipmentIds.includes(shipment.id) ? 'text-gray-400' : 'text-red-500 hover:text-red-700'}`}
-                                                disabled={deletingShipmentIds.includes(shipment.id)}
-                                            >
-                                                {deletingShipmentIds.includes(shipment.id) ? 'Deleting...' : <><FaTrash /> Delete</>}
-                                            </button>
                                             <button 
                                                 onClick={() => setSelectedShipment(shipment)} 
                                                 className="inline-flex items-center gap-1 text-blue-500 hover:text-blue-700"
@@ -465,30 +510,7 @@ const Shipments = () => {
             )}
             {selectedShipment && (
                 <ShipmentDetailsModal 
-                    id={selectedShipment.id}
-                    referenceNumber={selectedShipment.referenceNumber || ''}
-                    type={selectedShipment.type}
-                    status={selectedShipment.status || ''}
-                    driverName={selectedShipment.driverName || ''}
-                    notes={selectedShipment.notes || undefined}
-                    vehicle={selectedShipment.vehicleId ? {
-                        id: vehicles[selectedShipment.vehicleId]?.id || 0,
-                        code: vehicles[selectedShipment.vehicleId]?.code || '',
-                        identificationNumber: vehicles[selectedShipment.vehicleId]?.identificationNumber
-                    } : undefined}
-                    sourceWarehouse={selectedShipment.sourceWarehouseId ? {
-                        id: warehouses[selectedShipment.sourceWarehouseId]?.id || 0,
-                        code: warehouses[selectedShipment.sourceWarehouseId]?.code || '',
-                        name: warehouses[selectedShipment.sourceWarehouseId]?.name || '',
-                        location: warehouses[selectedShipment.sourceWarehouseId]?.location || ''
-                    } : undefined}
-                    destinationWarehouse={selectedShipment.destinationWarehouseId ? {
-                        id: warehouses[selectedShipment.destinationWarehouseId]?.id || 0,
-                        code: warehouses[selectedShipment.destinationWarehouseId]?.code || '',
-                        name: warehouses[selectedShipment.destinationWarehouseId]?.name || '',
-                        location: warehouses[selectedShipment.destinationWarehouseId]?.location || ''
-                    } : undefined}
-                    stocks={selectedShipment.stocks || []}
+                    shipment={selectedShipment} 
                     onClose={() => setSelectedShipment(null)} 
                 />
             )}
