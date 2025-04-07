@@ -17,6 +17,18 @@ export interface InventoryItem {
     serialized: boolean;
     barcodes: string[];
   };
+  warehouse?: {
+    id: number;
+    name: string;
+    code: string;
+  };
+  status?: string;
+  serialNumber?: string;
+  batchNumber?: string;
+  containerNumber?: string;
+  blNumber?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 /**
@@ -71,7 +83,10 @@ export interface InventorySearchResponse {
  * Get the authentication token from local storage
  */
 const getToken = (): string | null => {
-  return localStorage.getItem('accessToken');
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('accessToken');
+  }
+  return null;
 };
 
 /**
@@ -79,11 +94,15 @@ const getToken = (): string | null => {
  */
 const getHeaders = (): HeadersInit => {
   const token = getToken();
+  if (!token) {
+    console.warn('No authentication token found');
+  }
   return {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+      'Authorization': token ? `Bearer ${token}` : ''
   };
 };
+
 /**
  * Handle API response and error
  */
@@ -293,110 +312,125 @@ export const processInventoryCSV = async (productId: string, data: {
 };
 
 /**
- * Fetch all inventory items with optional filtering
- * @param filters Optional filters to apply
- * @returns Promise with array of inventory items
+ * Get inventory items with optional filtering
+ * @param filters Optional filters for inventory items
+ * @returns Promise with inventory items
  */
 export const getInventoryItems = async (filters?: InventoryFilters): Promise<InventorySearchResponse> => {
-  // Build query parameters
-  const params = new URLSearchParams();
-  params.append('page', String(filters?.page || 0)); // API uses 0-based indexing
-  params.append('size', String(filters?.size || 10));
+  // Build query parameters for pagination
+  const queryParams = new URLSearchParams();
   
-  // Add sorting parameters if provided
-  if (filters?.sortField) {
-    const direction = filters?.sort || 'ASC';
-    params.append('sort', `${filters.sortField},${direction}`);
+  // Add pagination parameters
+  if (filters?.page !== undefined) {
+    queryParams.append('page', filters.page.toString());
+  } else {
+    queryParams.append('page', '0');
   }
   
-  const queryString = `?${params.toString()}`;
-  const endpoint = `/inventories/search${queryString}`;
-  
-  // Build request body with improved search
-  const requestBody: any = {
-    where: {},
-    generalSearch: {
-      value: filters?.search ? filters.search.trim() : '',
-      fields: ['serialNumber', 'product.name', 'warehouse.name', 'status', 'batchNumber', 'containerNumber', 'blNumber']
-    }
-  };
-  
-  // Add warehouse filter if provided
-  if (filters?.warehouseId) {
-    requestBody.where.warehouseId = filters.warehouseId;
-  } else if (filters?.warehouse) {
-    // Support both ID and name-based filtering
-    requestBody.where.warehouseId = filters.warehouse;
+  if (filters?.size !== undefined) {
+    queryParams.append('size', filters.size.toString());
+  } else {
+    queryParams.append('size', '10');
   }
   
-  // Add status filter if provided
-  if (filters?.status) {
-    requestBody.where.status = filters.status;
-  }
-  
-  // Add date range filter if provided
-  if (filters?.startDate && filters?.endDate) {
-    requestBody.where.createdAt = {
-      $gte: filters.startDate,
-      $lte: filters.endDate
-    };
-  }
+  // Construct the endpoint with query parameters
+  const endpoint = `/inventories/search?${queryParams.toString()}`;
   
   // Retry mechanism
   const maxRetries = 3;
   let retryCount = 0;
   let lastError;
-
+  
   while (retryCount < maxRetries) {
     try {
       console.log(`Fetching inventory items (attempt ${retryCount + 1}/${maxRetries})...`);
-      console.log('Request body:', JSON.stringify(requestBody));
+      console.log('Request URL:', `${API_BASE_URL}${endpoint}`);
       
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
-        headers: {
-          ...getHeaders(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody),
-        // Add cache control to prevent browser caching
+        headers: getHeaders(),
+        body: JSON.stringify({}), // Empty body as per the example
         cache: 'no-store'
       });
+      
+      console.log('Response status:', response.status);
       
       // Handle empty response case
       if (!response.ok) {
         throw new Error(`API returned status ${response.status}: ${response.statusText}`);
       }
       
-      const data = await handleResponse<InventorySearchResponse>(response, 'POST', endpoint);
+      const responseText = await response.text();
+      console.log('Response text length:', responseText.length);
       
-      // If the response doesn't have the expected structure, normalize it
-      if (!data.content && Array.isArray(data)) {
+      if (!responseText) {
+        console.warn('Empty response received from server');
         return {
-          content: data,
-          totalPages: 1,
-          totalElements: data.length,
+          content: [],
+          totalPages: 0,
+          totalElements: 0,
           size: filters?.size || 10,
           number: filters?.page || 0,
-          numberOfElements: data.length,
+          numberOfElements: 0,
           first: true,
           last: true
         };
       }
       
+      // Try to parse the response as JSON
+      let data: InventorySearchResponse;
+      try {
+        data = JSON.parse(responseText);
+        console.log('Response data structure:', 
+          Object.keys(data).join(', '), 
+          'Content items:', data.content?.length || 0
+        );
+      } catch (parseError) {
+        console.error('Error parsing response as JSON:', parseError);
+        throw new Error('Invalid JSON response from server');
+      }
+      
+      // Validate the response structure
+      if (!data.content) {
+        console.warn('Response missing content array, normalizing structure');
+        if (Array.isArray(data)) {
+          // Handle case where API returns an array directly
+          return {
+            content: data,
+            totalPages: 1,
+            totalElements: data.length,
+            size: filters?.size || 10,
+            number: filters?.page || 0,
+            numberOfElements: data.length,
+            first: true,
+            last: true
+          };
+        } else {
+          // Handle case where API returns an object without content
+          return {
+            content: [],
+            totalPages: 0,
+            totalElements: 0,
+            size: filters?.size || 10,
+            number: filters?.page || 0,
+            numberOfElements: 0,
+            first: true,
+            last: true
+          };
+        }
+      }
+      
       return data;
     } catch (error) {
+      console.error(`Error fetching inventory items (attempt ${retryCount + 1}/${maxRetries}):`, error);
       lastError = error;
       retryCount++;
       
-      // Log the error but only throw after all retries fail
-      console.warn(`API request failed (attempt ${retryCount}/${maxRetries}):`, error);
-      
+      // Wait before retrying (exponential backoff)
       if (retryCount < maxRetries) {
-        // Exponential backoff: wait longer between each retry
-        const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        console.log(`Retrying API request (attempt ${retryCount + 1}/${maxRetries})...`);
+        const waitTime = Math.pow(2, retryCount) * 1000;
+        console.log(`Waiting ${waitTime}ms before retrying...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
       }
     }
   }
@@ -416,13 +450,13 @@ export const getInventoryItem = async (id: string): Promise<InventoryItem> => {
   
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'POST',
+      method: 'GET',
       headers: getHeaders()
     });
     
-    return handleResponse<InventoryItem>(response, 'POST', endpoint);
+    return handleResponse<InventoryItem>(response, 'GET', endpoint); 
   } catch (error) {
-    logApiError('POST', endpoint, error);
+    logApiError('GET', endpoint, error); 
     throw error;
   }
 };
@@ -459,13 +493,13 @@ export const getWarehouses = async (): Promise<any[]> => {
   
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'POST',
+      method: 'GET', 
       headers: getHeaders()
     });
     
-    return handleResponse<any[]>(response, 'POST', endpoint);
+    return handleResponse<any[]>(response, 'GET', endpoint); 
   } catch (error) {
-    logApiError('GET', endpoint, error);
+    logApiError('GET', endpoint, error); 
     throw error;
   }
 };
@@ -514,4 +548,50 @@ export const getProducts = async (params: ProductSearchParams = {}): Promise<Pro
         
         throw enhancedError;
     }
+};
+
+/**
+ * View detailed information about a specific inventory item
+ * @param id The ID of the inventory item to view
+ * @returns Promise with detailed inventory item information
+ */
+export const viewInventoryItem = async (id: number): Promise<InventoryItem> => {
+  const endpoint = `/inventories/${id}`;
+  
+  try {
+    console.log(`Fetching inventory item details for ID: ${id}`);
+    
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'GET',
+      headers: getHeaders(),
+      cache: 'no-store'
+    });
+    
+    console.log('Response status:', response.status);
+    
+    if (!response.ok) {
+      throw new Error(`API returned status ${response.status}: ${response.statusText}`);
+    }
+    
+    const responseText = await response.text();
+    
+    if (!responseText) {
+      console.warn('Empty response received from server');
+      throw new Error('Empty response received when fetching inventory item details');
+    }
+    
+    // Parse the response
+    try {
+      const data = JSON.parse(responseText);
+      console.log('Inventory item details retrieved successfully');
+      return data;
+    } catch (parseError) {
+      console.error('Error parsing inventory item details:', parseError);
+      throw new Error('Invalid JSON response when fetching inventory item details');
+    }
+  } catch (error) {
+    console.error(`Error fetching inventory item details:`, error);
+    logApiError('GET', endpoint, error);
+    throw error;
+  }
 };

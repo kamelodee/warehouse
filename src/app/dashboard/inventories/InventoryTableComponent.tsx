@@ -1,6 +1,8 @@
-import React from 'react';
-import { MdNavigateBefore, MdNavigateNext } from 'react-icons/md';
-import { InventoryItem } from '@/app/api/inventoryService';
+import React, { useState } from 'react';
+import { MdNavigateBefore, MdNavigateNext, MdVisibility } from 'react-icons/md';
+import { InventoryItem, viewInventoryItem } from '@/app/api/inventoryService';
+import InventoryDetailModal from './InventoryDetailModal';
+import './InventoryDetailModal.css';
 
 interface InventoryTableProps {
   items: InventoryItem[];
@@ -19,6 +21,11 @@ const InventoryTableComponent: React.FC<InventoryTableProps> = ({
   totalPages,
   onPageChange
 }) => {
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState<boolean>(false);
+
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -32,13 +39,13 @@ const InventoryTableComponent: React.FC<InventoryTableProps> = ({
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'active':
-        return '#4caf50'; // green
+        return 'bg-indigo-600'; // green
       case 'pending':
-        return '#ff9800'; // orange
+        return 'bg-orange-500'; // orange
       case 'sold':
-        return '#2196f3'; // blue
+        return 'bg-blue-500'; // blue
       case 'damaged':
-        return '#f44336'; // red
+        return 'bg-red-500'; // red
       default:
         return '#9e9e9e'; // grey
     }
@@ -56,6 +63,27 @@ const InventoryTableComponent: React.FC<InventoryTableProps> = ({
     }
   };
   
+  const handleViewDetails = async (itemId: number) => {
+    setDetailsLoading(true);
+    setDetailsError(null);
+    
+    try {
+      const itemDetails = await viewInventoryItem(itemId);
+      setSelectedItem(itemDetails);
+      setShowDetailsModal(true);
+    } catch (err) {
+      console.error('Error fetching inventory details:', err);
+      setDetailsError('Failed to load inventory details. Please try again.');
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+  
+  const closeDetailsModal = () => {
+    setShowDetailsModal(false);
+    setSelectedItem(null);
+  };
+
   if (loading) {
     return (
       <div className="loading-container">
@@ -83,7 +111,7 @@ const InventoryTableComponent: React.FC<InventoryTableProps> = ({
   
   return (
     <div className="inventory-table-container">
-      <table className="inventory-table">
+      <table className="inventory-table text-gray-900">
         <thead>
           <tr>
             <th>ID</th>
@@ -91,6 +119,7 @@ const InventoryTableComponent: React.FC<InventoryTableProps> = ({
             <th>Product Code</th>
             <th>Category</th>
             <th>Quantity</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -101,34 +130,58 @@ const InventoryTableComponent: React.FC<InventoryTableProps> = ({
               <td>{item.product?.code || 'N/A'}</td>
               <td>{item.product?.category || 'N/A'}</td>
               <td>{item.quantity}</td>
+              <td>
+                <button 
+                  className="action-button bg-indigo-600"
+                  onClick={() => handleViewDetails(item.id)}
+                  disabled={detailsLoading}
+                >
+                  <MdVisibility size={18} />
+                  <span>View</span>
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
       
       <div className="pagination-controls">
-        <div className="pagination-info">
-          Page {page} of {totalPages}
-        </div>
-        <div className="pagination-buttons">
-          <button 
-            className="pagination-button"
-            onClick={handlePrevPage}
-            disabled={page <= 1}
-          >
-            <MdNavigateBefore />
-            Previous
-          </button>
-          <button 
-            className="pagination-button"
-            onClick={handleNextPage}
-            disabled={page >= totalPages}
-          >
-            Next
-            <MdNavigateNext />
-          </button>
-        </div>
+        <button 
+          className="pagination-button" 
+          onClick={handlePrevPage} 
+          disabled={page <= 0}
+        >
+          <MdNavigateBefore size={20} />
+          <span>Previous</span>
+        </button>
+        
+        <span className="pagination-info">
+          Page {page + 1} of {Math.max(1, totalPages)}
+        </span>
+        
+        <button 
+          className="pagination-button" 
+          onClick={handleNextPage} 
+          disabled={page >= totalPages - 1}
+        >
+          <span>Next</span>
+          <MdNavigateNext size={20} />
+        </button>
       </div>
+      
+      {/* Details Modal */}
+      <InventoryDetailModal 
+        item={selectedItem}
+        isOpen={showDetailsModal}
+        onClose={closeDetailsModal}
+      />
+      
+      {detailsError && (
+        <div className="error-toast">
+          {detailsError}
+          <button onClick={() => setDetailsError(null)}>Dismiss</button>
+        </div>
+      )}
       
       <style jsx>{`
         .inventory-table-container {
@@ -241,6 +294,46 @@ const InventoryTableComponent: React.FC<InventoryTableProps> = ({
           background-color: #f5f5f5;
           border-radius: 4px;
           color: #666;
+        }
+        
+        .action-button {
+          display: flex;
+          align-items: center;
+          padding: 0.5rem 1rem;
+          background-color: white;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 0.875rem;
+        }
+        
+        .action-button:hover:not(:disabled) {
+          background-color: #f5f5f5;
+        }
+        
+        .action-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        
+        .view-button {
+          background-color: #4caf50;
+          color: white;
+        }
+        
+        .view-button:hover:not(:disabled) {
+          background-color: #3e8e41;
+        }
+        
+        .error-toast {
+          position: fixed;
+          top: 1rem;
+          right: 1rem;
+          background-color: #ffebee;
+          border-radius: 4px;
+          padding: 1rem;
+          border: 1px solid #d32f2f;
+          color: #d32f2f;
         }
       `}</style>
     </div>

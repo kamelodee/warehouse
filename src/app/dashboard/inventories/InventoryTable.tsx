@@ -40,15 +40,15 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
-        return '#4caf50'; // green
+        return 'bg-indigo-600'; // green
       case 'pending':
-        return '#ff9800'; // orange
+        return 'bg-orange-500'; // orange
       case 'sold':
-        return '#2196f3'; // blue
+        return 'bg-blue-500'; // blue
       case 'damaged':
-        return '#f44336'; // red
+        return 'bg-red-500'; // red
       default:
-        return '#9e9e9e'; // grey
+        return '#000000'; // grey
     }
   };
   
@@ -91,7 +91,7 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
   
   return (
     <div className="inventory-table-container">
-      <table className="inventory-table">
+      <table className="inventory-table text-gray-900">
         <thead>
           <tr>
             <th>Serial Number</th>
@@ -101,7 +101,7 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
             <th>Created At</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="text-gray-900">
           {items.map((item) => (
             <tr key={item.id}>
               <td>{item.serialNumber}</td>
