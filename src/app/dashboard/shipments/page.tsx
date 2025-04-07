@@ -36,7 +36,7 @@ const convertToShipmentWithRequiredId = (shipment: Shipment): Shipment => {
     // Ensure all properties from Shipment interface are present
     return {
         id: shipment.id ?? 0,
-        referenceNumber: shipment.referenceNumber ?? '',
+        referenceNumber: shipment.referenceNumber ?? 'N/A',
         type: shipment.type ?? '',
         status: shipment.status ?? null,
         driverName: shipment.driverName ?? null,
@@ -460,7 +460,7 @@ const Shipments = () => {
                         <thead className="bg-gray-50">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                               
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference Number</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destination</th>
@@ -475,6 +475,7 @@ const Shipments = () => {
                                 paginatedShipments.map((shipment, index) => (
                                     <tr key={shipment.id} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-gray-100' : ''}`}> 
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{shipment.id}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{shipment.referenceNumber}</td>
                                         
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                                             <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeColor(shipment.status)}`}>

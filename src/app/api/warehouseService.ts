@@ -122,6 +122,29 @@ export const searchWarehouses = async (params: WarehouseSearchParams = {}): Prom
 };
 
 /**
+ * Get all warehouses
+ * @returns Promise with warehouse search response
+ */
+export const getWarehouses = async (): Promise<{items: Warehouse[], total: number}> => {
+  try {
+    const response = await searchWarehouses({
+      page: 0,
+      size: 100,
+      sort: 'ASC',
+      sortField: 'name'
+    });
+    
+    return {
+      items: response.content,
+      total: response.totalElements
+    };
+  } catch (error) {
+    logApiError('GET', '/warehouses', error);
+    throw error;
+  }
+};
+
+/**
  * Get a warehouse by ID
  */
 export const getWarehouse = async (id: number): Promise<Warehouse> => {

@@ -462,3 +462,49 @@ export const createBatchProducts = async (products: Partial<Product>[]): Promise
         throw enhancedError;
     }
 };
+
+/**
+ * Get all products
+ * @returns Promise with product search response
+ */
+export const getProducts = async (): Promise<{items: Product[], total: number}> => {
+  // Retry mechanism
+  const maxRetries = 3;
+  let retryCount = 0;
+  let lastError;
+
+  while (retryCount < maxRetries) {
+    try {
+      const response = await searchProducts({
+        page: 0,
+        size: 500, // Increased to get more products
+        sort: 'ASC',
+        sortField: 'name'
+      });
+      
+      console.log(`Loaded ${response.content?.length || 0} products`);
+      
+      return {
+        items: response.content || [],
+        total: response.totalElements || 0
+      };
+    } catch (error) {
+      lastError = error;
+      retryCount++;
+      
+      // Log the error but only throw after all retries fail
+      console.warn(`Product fetch failed (attempt ${retryCount}/${maxRetries}):`, error);
+      
+      if (retryCount < maxRetries) {
+        // Exponential backoff: wait longer between each retry
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        console.log(`Retrying product fetch (attempt ${retryCount + 1}/${maxRetries})...`);
+      }
+    }
+  }
+  
+  // If we've exhausted all retries, log the error and throw
+  logApiError('GET', '/products', lastError);
+  throw lastError;
+};

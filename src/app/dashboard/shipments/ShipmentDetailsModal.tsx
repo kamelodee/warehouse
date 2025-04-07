@@ -29,31 +29,25 @@ const ShipmentDetailsModal: React.FC<ShipmentDetailsModalProps> = ({
             <table className="w-full border-collapse text-black text-xs">
                 <thead>
                     <tr className="bg-gray-200">
-                        <th className="border p-1">Product ID</th>
+                       
                         <th className="border p-1">Product Code</th>
                         <th className="border p-1">Product Name</th>
-                        <th className="border p-1">Category</th>
                         <th className="border p-1">Quantity</th>
                         <th className="border p-1">Quantity Received</th>
                         <th className="border p-1">Serialized</th>
-                        <th className="border p-1">Barcodes</th>
+                       
                     </tr>
                 </thead>
                 <tbody>
                     {shipment.stocks.map((stock, index) => (
                         <tr key={index} className="border-b">
-                            <td className="border p-1">{stock.product.id}</td>
+                           
                             <td className="border p-1">{stock.product.code}</td>
                             <td className="border p-1">{stock.product.name}</td>
-                            <td className="border p-1">{stock.product.category || 'N/A'}</td>
                             <td className="border p-1">{stock.quantity}</td>
                             <td className="border p-1">{stock.quantityReceived || 'N/A'}</td>
                             <td className="border p-1">{stock.product.serialized ? 'Yes' : 'No'}</td>
-                            <td className="border p-1">
-                                {stock.product.barcodes.length > 0 
-                                    ? stock.product.barcodes.join(', ') 
-                                    : 'No barcodes'}
-                            </td>
+                            
                         </tr>
                     ))}
                 </tbody>
