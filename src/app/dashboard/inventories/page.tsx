@@ -222,7 +222,7 @@ const InventoryPage = () => {
         
         .upload-button {
           padding: 0.5rem 1rem;
-          background-color: #2196f3;
+          background-color: #4f46e5;
           color: white;
           border: none;
           border-radius: 4px;
@@ -232,7 +232,7 @@ const InventoryPage = () => {
         }
         
         .upload-button:hover {
-          background-color: #1976d2;
+          background-color: #4f46e5;
         }
         
         .icon {

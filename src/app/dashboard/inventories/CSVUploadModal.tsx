@@ -239,8 +239,8 @@ const CSVUploadModal: React.FC<CSVUploadModalProps> = ({ isOpen, onClose, onSucc
                 disabled={!file || uploading}
                 className={`px-4 py-2 rounded-md ${
                   !file || uploading
-                    ? 'bg-blue-300 cursor-not-allowed'
-                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                    ? 'bg-indigo-300 cursor-not-allowed'
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white'
                 }`}
               >
                 {uploading ? 'Uploading...' : 'Upload'}
@@ -344,7 +344,7 @@ const CSVUploadModal: React.FC<CSVUploadModalProps> = ({ isOpen, onClose, onSucc
                 )}
               </select>
               {loadingProducts && (
-                <div className="mt-1 text-sm text-blue-500">Loading products...</div>
+                <div className="mt-1 text-sm text-indigo-600">Loading products...</div>
               )}
               {!loadingProducts && products.length === 0 && (
                 <div className="mt-1 text-sm text-red-500">No products available. Please create products first.</div>
@@ -375,8 +375,8 @@ const CSVUploadModal: React.FC<CSVUploadModalProps> = ({ isOpen, onClose, onSucc
                   !containerNumberColumn ||
                   !blNumberColumn ||
                   processing
-                    ? 'bg-blue-300 cursor-not-allowed'
-                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                    ? 'bg-indigo-300 cursor-not-allowed'
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white'
                 }`}
               >
                 {processing ? 'Processing...' : 'Process'}
