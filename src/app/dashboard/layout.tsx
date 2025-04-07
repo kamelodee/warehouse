@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { FaCar, FaUser, FaSignOutAlt, FaCog } from 'react-icons/fa';
 import { useLogout } from '@/app/utils/logout';
+import { DocumentIcon } from './icons/DocumentIcon';
 
 export default function DashboardLayout({
   children,
@@ -84,6 +85,13 @@ export default function DashboardLayout({
           )
         }
       ] : []),
+      { 
+        name: 'Transfers', 
+        path: '/dashboard/transfers',
+        icon: (
+          <DocumentIcon className="w-6 h-6" />
+        )
+      },
     ] : []),
     { 
       name: 'Shipments', 
