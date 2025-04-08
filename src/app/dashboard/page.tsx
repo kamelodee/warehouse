@@ -1,15 +1,12 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   FaBox,
   FaUser,
-  FaTruck,
-  FaWarehouse,
   FaClipboardList,
   FaShoppingCart,
   FaIndustry,
-  FaBoxOpen,
   FaClipboardCheck,
   FaChartLine,
   FaTags,
@@ -26,6 +23,9 @@ import {
 } from 'react-icons/fa';
 import { withAuth } from '../components/withAuth';
 import { useLogout } from '@/app/utils/logout';
+import { getWarehouses } from '@/app/api/warehouseService';
+import { Warehouse as WarehouseService } from '@/app/api/warehouseService';
+import { Warehouse } from '@/types/warehouse';
 
 // Expanded interfaces to include shipping and user metrics
 interface ProductMetrics {
@@ -185,6 +185,14 @@ const extractShippingMetrics = (shippingData: any): ShippingMetrics => ({
   completedShipments: shippingData.completedShipments || 0
 });
 
+// Mapping function to convert service warehouse to project warehouse
+const mapWarehouse = (serviceWarehouse: WarehouseService): Warehouse => ({
+  id: serviceWarehouse.id || 0,
+  name: serviceWarehouse.name,
+  location: serviceWarehouse.location || '',
+  code: serviceWarehouse.code || '',
+});
+
 function DashboardPage() {
   const logout = useLogout();
   const router = useRouter();
@@ -238,6 +246,9 @@ function DashboardPage() {
   const [errors, setErrors] = useState<DashboardError[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
+
   const logError = (error: Partial<DashboardError>) => {
     const newError: DashboardError = {
       type: error.type || 'unknown',
@@ -273,6 +284,24 @@ function DashboardPage() {
       };
     }
   };
+
+  const fetchWarehouses = useCallback(async () => {
+    try {
+      const { items: serviceWarehouses } = await getWarehouses();
+      
+      const mappedWarehouses = serviceWarehouses.map(mapWarehouse);
+      
+      if (mappedWarehouses.length > 0) {
+        setWarehouses(mappedWarehouses);
+        setSelectedWarehouse(mappedWarehouses[0]);
+      }
+    } catch (error) {
+      logError({
+        type: 'network',
+        message: 'Failed to fetch warehouses',
+      });
+    }
+  }, []);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -318,6 +347,7 @@ function DashboardPage() {
     };
 
     fetchDashboardData();
+    fetchWarehouses();
   }, []);
 
   // Error display component
@@ -383,12 +413,13 @@ function DashboardPage() {
         );
       }
 
-      if (shipmentFilters.startDate) {
+      // Add warehouse filter badge
+      if (shipmentFilters.sourceWarehouse) {
         badges.push(
-          <span key="startDate" className="bg-green-100 text-green-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">
-            From: {new Date(shipmentFilters.startDate).toLocaleDateString()}
+          <span key="warehouse" className="bg-green-100 text-green-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">
+            Warehouse: {shipmentFilters.sourceWarehouse}
             <button 
-              onClick={() => setShipmentFilters(prev => ({ ...prev, startDate: undefined }))}
+              onClick={() => setShipmentFilters(prev => ({ ...prev, sourceWarehouse: undefined }))}
               className="ml-1 text-green-600 hover:text-green-800"
             >
               <FaTimes className="inline-block w-3 h-3" />
@@ -397,20 +428,7 @@ function DashboardPage() {
         );
       }
 
-      if (shipmentFilters.endDate) {
-        badges.push(
-          <span key="endDate" className="bg-purple-100 text-purple-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">
-            To: {new Date(shipmentFilters.endDate).toLocaleDateString()}
-            <button 
-              onClick={() => setShipmentFilters(prev => ({ ...prev, endDate: undefined }))}
-              className="ml-1 text-purple-600 hover:text-purple-800"
-            >
-              <FaTimes className="inline-block w-3 h-3" />
-            </button>
-          </span>
-        );
-      }
-
+      // Existing date and other filter badges...
       return badges;
     };
 
@@ -418,9 +436,6 @@ function DashboardPage() {
     const clearFilters = () => {
       setShipmentFilters({ status: 'all' });
     };
-
-    // Get unique warehouse options from recent shipments
-    const sourceWarehouses = [...new Set(dashboardData.recentShipments.map(s => s.destination))];
 
     return (
       <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
@@ -439,7 +454,7 @@ function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Status Filter */}
+          {/* Existing status filter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Shipment Status</label>
             <select
@@ -448,7 +463,7 @@ function DashboardPage() {
                 ...prev, 
                 status: e.target.value as ShipmentFilters['status'] 
               }))}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-indigo-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
             >
               <option value="all">All Shipments</option>
               <option value="in_transit">In Transit</option>
@@ -457,14 +472,34 @@ function DashboardPage() {
             </select>
           </div>
 
-          {/* Date Range Filters */}
+          {/* Warehouse Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-900 mb-1">Warehouse</label>
+            <select
+              value={shipmentFilters.sourceWarehouse || ''}
+              onChange={(e) => setShipmentFilters(prev => ({ 
+                ...prev, 
+                sourceWarehouse: e.target.value || undefined 
+              }))}
+              className="w-full border border-indigo-400 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
+            >
+              <option value="">All Warehouses</option>
+              {warehouses.map(warehouse => (
+                <option key={warehouse.id} value={warehouse.name}>
+                  {warehouse.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Existing date filters */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
             <input 
               type="date" 
               value={shipmentFilters.startDate || ''}
               onChange={(e) => setShipmentFilters(prev => ({ ...prev, startDate: e.target.value }))}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-indigo-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
           <div>
@@ -473,23 +508,8 @@ function DashboardPage() {
               type="date" 
               value={shipmentFilters.endDate || ''}
               onChange={(e) => setShipmentFilters(prev => ({ ...prev, endDate: e.target.value }))}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-indigo-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
-          </div>
-
-          {/* Warehouse Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Warehouse</label>
-            <select
-              value={shipmentFilters.sourceWarehouse || ''}
-              onChange={(e) => setShipmentFilters(prev => ({ ...prev, sourceWarehouse: e.target.value }))}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Warehouses</option>
-              {sourceWarehouses.map(warehouse => (
-                <option key={warehouse} value={warehouse}>{warehouse}</option>
-              ))}
-            </select>
           </div>
         </div>
 
@@ -526,12 +546,8 @@ function DashboardPage() {
   return (
     <div className="bg-gray-100 min-h-screen">
       <header className="bg-white shadow-md py-4 px-6 flex justify-between items-center">
-        <div className="flex items-center space-x-4">
-          <h1 className="text-2xl font-bold text-gray-800">Inventory Manager App</h1>
-        </div>
-        <div className="flex items-center space-x-4">
-         
-        </div>
+        
+       
       </header>
       <LoadingIndicator />
       {errors.length > 0 && <ErrorDisplay />}

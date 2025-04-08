@@ -170,12 +170,8 @@ const Products = () => {
                         : 'bg-green-500 hover:bg-green-600'} text-white font-semibold py-2 px-4 rounded-md`}
                     disabled={isUploading}
                 >
-                    {isUploading ? 'Upload in Progress...' : 'Excel Upload'}
+                    {isUploading ? 'Upload in Progress...' : 'Upload'}
                 </button>
-                <DownloadTemplate 
-                    variant="button" 
-                    className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md" 
-                />
             </div>
             <Suspense fallback={<div>Loading...</div>}>
                 <AddProduct 
