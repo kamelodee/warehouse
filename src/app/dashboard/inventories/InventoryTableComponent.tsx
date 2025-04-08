@@ -111,33 +111,33 @@ const InventoryTableComponent: React.FC<InventoryTableProps> = ({
   
   return (
     <div className="inventory-table-container">
-      <table className="inventory-table text-gray-900">
-        <thead>
+      <table className="min-w-full divide-y divide-gray-200">
+      <thead className="bg-gray-50">
           <tr>
-            <th>ID</th>
-            <th>Product</th>
-            <th>Product Code</th>
-            <th>Category</th>
-            <th>Quantity</th>
-            <th>Actions</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Code</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="bg-white divide-y divide-gray-200">
           {items.map((item) => (
             <tr key={item.id}>
-              <td>{item.id}</td>
-              <td>{item.product?.name || 'N/A'}</td>
-              <td>{item.product?.code || 'N/A'}</td>
-              <td>{item.product?.category || 'N/A'}</td>
-              <td>{item.quantity}</td>
-              <td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.id}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.product?.name || 'N/A'}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.product?.code || 'N/A'}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.product?.category || 'N/A'}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.quantity}</td>
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                 <button 
-                  className="action-button bg-indigo-600"
+                  className="text-blue-500 hover:text-blue-700 mr-2"
                   onClick={() => handleViewDetails(item.id)}
                   disabled={detailsLoading}
                 >
                   <MdVisibility size={18} />
-                  <span>View</span>
+                 
                 </button>
               </td>
             </tr>

@@ -89,8 +89,8 @@ const InventoryFilters: React.FC<InventoryFiltersProps> = ({ onFilterChange }) =
   };
 
   return (
-    <div className="inventory-filters">
-      <div className="filters-header">
+    <div className="inventory-filters_">
+      <div className="filters-header_">
         <button 
           className="filter-toggle-button"
           onClick={() => setShowFilters(!showFilters)}

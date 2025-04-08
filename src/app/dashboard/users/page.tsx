@@ -267,7 +267,7 @@ export default function Users() {
 
       console.log('Sending warehouse search payload:', payload);
 
-      const response = await fetch('https://stock.hisense.com.gh/api/v1.0/warehouses/search', {
+      const response = await fetch('https://stock.hisense.com.gh/api/v1.0/warehouses/search?page=0&size=100&sort=ASC&sortField=id', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

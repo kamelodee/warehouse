@@ -91,8 +91,8 @@ const InventoryTable: React.FC<InventoryTableProps> = ({
   
   return (
     <div className="inventory-table-container">
-      <table className="inventory-table text-gray-900">
-        <thead>
+      <table className="min-w-full divide-y divide-gray-200">
+      <thead className="bg-gray-50">
           <tr>
             <th>Serial Number</th>
             <th>Product</th>
