@@ -38,10 +38,10 @@ export interface InventoryFilters {
   status?: string;
   warehouse?: string;
   search?: string;
-  page?: number;
-  size?: number;
-  sort?: string;
-  sortField?: string;
+  pageNumber?: number;
+  pageSize?: number;
+  sortBy?: string;
+  sortOrder?: string;
   warehouseId?: string;
   startDate?: string;
   endDate?: string;
@@ -321,16 +321,16 @@ export const getInventoryItems = async (filters?: InventoryFilters): Promise<Inv
   const queryParams = new URLSearchParams();
   
   // Add pagination parameters
-  if (filters?.page !== undefined) {
-    queryParams.append('page', filters.page.toString());
+  if (filters?.pageNumber !== undefined) {
+    queryParams.append('pageNumber', filters.pageNumber.toString());
   } else {
-    queryParams.append('page', '0');
+    queryParams.append('pageNumber', '0');
   }
   
-  if (filters?.size !== undefined) {
-    queryParams.append('size', filters.size.toString());
+  if (filters?.pageSize !== undefined) {
+    queryParams.append('pageSize', filters.pageSize.toString());
   } else {
-    queryParams.append('size', '10');
+    queryParams.append('pageSize', '10');
   }
   
   // Construct the endpoint with query parameters
@@ -369,8 +369,8 @@ export const getInventoryItems = async (filters?: InventoryFilters): Promise<Inv
           content: [],
           totalPages: 0,
           totalElements: 0,
-          size: filters?.size || 10,
-          number: filters?.page || 0,
+          size: filters?.pageSize || 10,
+          number: filters?.pageNumber || 0,
           numberOfElements: 0,
           first: true,
           last: true
@@ -399,8 +399,8 @@ export const getInventoryItems = async (filters?: InventoryFilters): Promise<Inv
             content: data,
             totalPages: 1,
             totalElements: data.length,
-            size: filters?.size || 10,
-            number: filters?.page || 0,
+            size: filters?.pageSize || 10,
+            number: filters?.pageNumber || 0,
             numberOfElements: data.length,
             first: true,
             last: true
@@ -411,8 +411,8 @@ export const getInventoryItems = async (filters?: InventoryFilters): Promise<Inv
             content: [],
             totalPages: 0,
             totalElements: 0,
-            size: filters?.size || 10,
-            number: filters?.page || 0,
+            size: filters?.pageSize || 10,
+            number: filters?.pageNumber || 0,
             numberOfElements: 0,
             first: true,
             last: true

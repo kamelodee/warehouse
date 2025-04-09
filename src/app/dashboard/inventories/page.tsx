@@ -3,15 +3,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MdRefresh, MdUpload } from 'react-icons/md';
 import { withAuth as AuthWrapper } from '@/app/components/withAuth';
-import InventoryFilters from './InventoryFilters';
 import InventoryTableComponent from './InventoryTableComponent';
 import { 
   getInventoryItems, 
   uploadInventoryCSV, 
   processInventoryCSV,
   InventoryItem,
-  InventorySearchResponse,
-  InventoryFilters as InventoryFilterParams
+  InventorySearchResponse
 } from '@/app/api/inventoryService';
 import CSVUploadModal from './CSVUploadModal';
 
@@ -30,9 +28,11 @@ const InventoryPage = () => {
   const [filters, setFilters] = useState<PageFilters>({});
   const [page, setPage] = useState<number>(0); // API uses 0-based indexing
   const [totalPages, setTotalPages] = useState<number>(1);
-  const [pageSize] = useState<number>(10);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [uploadSuccess, setUploadSuccess] = useState<boolean>(false);
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
+  const [sortField, setSortField] = useState<string>('serialNumber');
+  const [sort, setSort] = useState<string>('ASC');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -51,7 +51,7 @@ const InventoryPage = () => {
   // Fetch data when filters or pagination changes
   useEffect(() => {
     fetchInventoryItems();
-  }, [filters, page, pageSize]);
+  }, [filters, page, pageSize, sortField, sort]);
 
   // Debounced fetch function to prevent excessive API calls
   const fetchInventoryItems = async () => {
@@ -62,10 +62,17 @@ const InventoryPage = () => {
       console.log('Fetching inventory items with filters:', filters);
       
       // Convert page filters to API filters
-      const apiFilters: InventoryFilterParams = {
+      const apiFilters: {
+        pageNumber: number;
+        pageSize: number;
+        sortBy: string;
+        sortOrder: string;
+      } & PageFilters = {
         ...filters,
-        page,
-        size: pageSize
+        pageNumber: page,
+        pageSize,
+        sortBy: sortField,
+        sortOrder: sort
       };
       
       const response = await getInventoryItems(apiFilters);
@@ -88,11 +95,6 @@ const InventoryPage = () => {
       setLoading(false);
     }
   };
-
-  const handleFilterChange = useCallback((newFilters: PageFilters) => {
-    setPage(0); // Reset to first page when filters change
-    setFilters(newFilters);
-  }, []);
 
   const handlePageChange = (newPage: number) => {
     setPage(newPage);
@@ -124,11 +126,88 @@ const InventoryPage = () => {
     }, 5000);
   };
 
+  const renderFilterSection = () => (
+    <div className="flex space-x-4 mb-4">
+      <div>
+        <label htmlFor="status" className="border rounded p-1 text-black">Status:</label>
+        <select
+          id="status"
+          value={filters.status || ''}
+          onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+          className="border rounded p-1 text-black"
+        >
+          <option value="">All</option>
+          <option value="IN_STOCK">In Stock</option>
+          <option value="LOW_STOCK">Low Stock</option>
+          <option value="OUT_OF_STOCK">Out of Stock</option>
+        </select>
+      </div>
+      <div>
+        <label htmlFor="warehouseId" className="border rounded p-1 text-black">Warehouse:</label>
+        <select
+          id="warehouseId"
+          value={filters.warehouseId || ''}
+          onChange={(e) => setFilters(prev => ({ ...prev, warehouseId: e.target.value }))}
+          className="border rounded p-1 text-black"
+        >
+          <option value="">All Warehouses</option>
+          {/* You might want to populate this dynamically from your warehouses */}
+          <option value="1">Warehouse 1</option>
+          <option value="2">Warehouse 2</option>
+        </select>
+      </div>
+      <div>
+        <label htmlFor="size" className="border rounded p-1 text-black">Page Size:</label>
+        <input
+          type="number"
+          id="size"
+          value={pageSize}
+          onChange={(e) => setPageSize(Number(e.target.value))}
+          min="1"
+          className="border rounded p-1 text-black"
+        />
+      </div>
+      <div>
+        <label htmlFor="sortField" className="border rounded p-1 text-black">Sort By:</label>
+        <select
+          id="sortField"
+          value={sortField}
+          onChange={(e) => setSortField(e.target.value)}
+          className="border rounded p-1 text-black"
+        >
+          <option value="serialNumber">Serial Number</option>
+          <option value="productName">Product Name</option>
+          <option value="warehouseName">Warehouse</option>
+        </select>
+      </div>
+      <div>
+        <label htmlFor="sort" className="border rounded p-1 text-black">Order:</label>
+        <select
+          id="sort"
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+          className="border rounded p-1 text-black"
+        >
+          <option value="ASC">Ascending</option>
+          <option value="DESC">Descending</option>
+        </select>
+      </div>
+      <button 
+        onClick={fetchInventoryItems} 
+        disabled={loading}
+        className="bg-indigo-600 text-white rounded p-1"
+      >
+        {loading ? 'Loading...' : 'Apply Filters'}
+      </button>
+    </div>
+  );
+
   return (
     <div className="inventory-page">
+      <h1 className="page-title">Inventory Management</h1>
       <div className="page-header">
-        <h1 className="page-title">Inventory Management</h1>
-        <div className="header-actions">
+        <div className="header-actions-left">
+        
           <button 
             className="refresh-button"
             onClick={handleRefresh}
@@ -146,6 +225,7 @@ const InventoryPage = () => {
             Upload CSV
           </button>
         </div>
+        <h1 ></h1>
       </div>
       
       {error && (
@@ -160,7 +240,7 @@ const InventoryPage = () => {
         </div>
       )}
       
-      <InventoryFilters onFilterChange={handleFilterChange} />
+      {renderFilterSection()}
       
       <InventoryTableComponent 
         items={inventoryItems}
@@ -187,6 +267,11 @@ const InventoryPage = () => {
           justify-content: space-between;
           align-items: center;
           margin-bottom: 1.5rem;
+        }
+        
+        .header-actions-left {
+          display: flex;
+          gap: 1rem;
         }
         
         .page-title {

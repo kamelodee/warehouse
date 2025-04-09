@@ -299,7 +299,7 @@ const Products = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         <button 
                                             onClick={() => handleEdit(product.id)} 
-                                            className="text-blue-500 hover:text-blue-700 mr-2"
+                                            className="text-indigo-500 hover:text-indigo-700 mr-2"
                                             disabled={deletingProductIds.includes(product.id)}
                                         >
                                             Edit
