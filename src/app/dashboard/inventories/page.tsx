@@ -12,6 +12,7 @@ import {
   InventorySearchResponse
 } from '@/app/api/inventoryService';
 import CSVUploadModal from './CSVUploadModal';
+import { CreateInventoryModal } from './components/CreateInventoryModal';
 
 interface PageFilters {
   status?: string;
@@ -31,6 +32,7 @@ const InventoryPage = () => {
   const [pageSize, setPageSize] = useState<number>(10);
   const [uploadSuccess, setUploadSuccess] = useState<boolean>(false);
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
+  const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [sortField, setSortField] = useState<string>('serialNumber');
   const [sort, setSort] = useState<string>('ASC');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -110,6 +112,14 @@ const InventoryPage = () => {
 
   const handleCloseUploadModal = () => {
     setShowUploadModal(false);
+  };
+
+  const handleCreateInventoryClick = () => {
+    setShowCreateModal(true);
+  };
+
+  const handleCloseCreateModal = () => {
+    setShowCreateModal(false);
   };
 
   const handleUploadSuccess = () => {
@@ -207,23 +217,19 @@ const InventoryPage = () => {
       <h1 className="page-title">Inventory Management</h1>
       <div className="page-header">
         <div className="header-actions-left">
-        
-          <button 
-            className="refresh-button"
-            onClick={handleRefresh}
-            disabled={loading}
+        <button 
+            onClick={handleCreateInventoryClick}
+            className="bg-indigo-600 text-white rounded p-2"
           >
-            <MdRefresh className="icon" />
-            Refresh
+            Create Inventory
           </button>
-          
           <button 
             onClick={handleUploadClick}
-            className="upload-button"
+            className="bg-green-600 text-white rounded p-2"
           >
-            <MdUpload className="icon" />
-            Upload CSV
+            Upload
           </button>
+         
         </div>
         <h1 ></h1>
       </div>
@@ -255,6 +261,11 @@ const InventoryPage = () => {
         isOpen={showUploadModal}
         onClose={handleCloseUploadModal}
         onSuccess={handleUploadSuccess}
+      />
+      
+      <CreateInventoryModal 
+        isOpen={showCreateModal}
+        onClose={handleCloseCreateModal}
       />
       
       <style jsx>{`

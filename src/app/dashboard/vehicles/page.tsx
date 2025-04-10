@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { searchVehicles, Vehicle, deleteVehicle } from '../../api/vehicleService';
 import AddVehicle from './AddVehicle';
+import VehicleUploadModal from './components/VehicleUploadModal';
 
 // Use the Vehicle interface from vehicleService but ensure id is required and add additional properties
 interface VehicleWithRequiredId extends Omit<Vehicle, 'id'> {
@@ -17,6 +18,7 @@ const Vehicles = () => {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [deletingVehicleIds, setDeletingVehicleIds] = useState<number[]>([]);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
    
     // State variables for pagination and sorting
     const [page, setPage] = useState<number>(0);
@@ -112,6 +114,10 @@ const Vehicles = () => {
         fetchVehicles(); // Refresh the vehicle list after adding a new vehicle
     };
 
+    const handleUploadSuccess = () => {
+        fetchVehicles(); // Refresh the vehicle list after uploading vehicles
+    };
+
     // Format date to a more readable format (kept for future use)
     const _formatDate = (dateString?: string) => { // eslint-disable-line @typescript-eslint/no-unused-vars
         if (!dateString) return 'N/A';
@@ -122,11 +128,24 @@ const Vehicles = () => {
     return (
         <div className="p-4">
             <h1 className="text-black font-bold mb-4">Vehicles Management</h1>
-            <button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 text-white rounded p-2 mb-4">Add Vehicle</button>
+            <div className=" items-center mb-4">
+                <button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 text-white rounded p-2 mr-4">Add Vehicle</button>
+                <button 
+                    onClick={() => setIsUploadModalOpen(true)}
+                    className="bg-green-600 text-white rounded p-2"
+                >
+                    Upload Vehicles
+                </button>
+            </div>
             <AddVehicle 
                 isOpen={isModalOpen} 
                 onClose={() => setIsModalOpen(false)} 
                 onVehicleAdded={handleVehicleAdded} 
+            />
+            <VehicleUploadModal 
+                isOpen={isUploadModalOpen}
+                onClose={() => setIsUploadModalOpen(false)}
+                onUploadSuccess={handleUploadSuccess}
             />
             
             <div className="flex space-x-4 mb-4">

@@ -243,3 +243,34 @@ export const deleteWarehouse = async (id: number): Promise<void> => {
         throw error;
     }
 };
+
+/**
+ * Upload warehouses via CSV file
+ */
+export const uploadWarehouses = async (file: File): Promise<any> => {
+  const token = getToken();
+  const endpoint = '/warehouses/upload';
+  
+  if (!token) {
+    throw new Error('Authentication token is missing');
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'accept': '*/*'
+      },
+      body: formData
+    });
+
+    return handleResponse(response, 'POST', endpoint);
+  } catch (error) {
+    logApiError('POST', endpoint, error, { fileName: file.name });
+    throw error;
+  }
+};

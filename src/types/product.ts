@@ -1,8 +1,10 @@
 export interface Product {
   id: number;
-  code: string;
   name: string;
-  category: string;
-  barcodes?: string[];
-  serialized: boolean;
+  code: string;
+  category?: string;
+  serialized?: boolean;
+  description?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }

@@ -217,3 +217,34 @@ export const deleteVehicle = async (id: number): Promise<void> => {
         throw error;
     }
 };
+
+/**
+ * Upload vehicles from a file
+ */
+export const uploadVehicles = async (file: File): Promise<any> => {
+    const token = getToken();
+    const endpoint = '/vehicles/upload';
+    
+    if (!token) {
+        throw new Error('Authentication token is missing');
+    }
+    
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: 'POST',
+            headers: {
+                'accept': '*/*',
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+        
+        return handleResponse<any>(response, 'POST', endpoint);
+    } catch (error) {
+        logApiError('POST', endpoint, error, { file: file.name });
+        throw error;
+    }
+};

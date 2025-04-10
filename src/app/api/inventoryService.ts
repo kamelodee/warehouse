@@ -1,5 +1,6 @@
 // inventoryService.ts - A centralized service for inventory operations
 import { logApiError } from './warehouseService';
+import axios from 'axios';
 
 const API_BASE_URL = 'https://stock.hisense.com.gh/api/v1.0';
 
@@ -593,5 +594,39 @@ export const viewInventoryItem = async (id: number): Promise<InventoryItem> => {
     console.error(`Error fetching inventory item details:`, error);
     logApiError('GET', endpoint, error);
     throw error;
+  }
+};
+
+/**
+ * Create inventory item
+ * @param inventoryData Inventory item data
+ * @returns Promise with created inventory item
+ */
+export const createInventoryItem = async (inventoryData: any): Promise<any> => {
+  try {
+    const token = getToken();
+    const response = await axios.post(`${API_BASE_URL}/inventories`, inventoryData, {
+      headers: {
+        'accept': '*/*',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token || ''}`
+      }
+    });
+    return response.data;
+  } catch (error: any) {
+    // Check if the error has a response from the server
+    if (error.response && error.response.data) {
+      const apiError = error.response.data as any;
+      
+      // Log the full error for debugging
+      console.error('Create inventory error:', apiError);
+      
+      // Throw the error with the specific message
+      throw new Error(apiError.message || 'Failed to create inventory');
+    }
+    
+    // If no specific server response, throw a generic error
+    console.error('Error creating inventory:', error);
+    throw new Error('Failed to create inventory. Please try again.');
   }
 };

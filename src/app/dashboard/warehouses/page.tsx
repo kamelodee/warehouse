@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { searchWarehouses, Warehouse, deleteWarehouse, updateWarehouse } from '../../api/warehouseService';
 import AddWarehouse from './AddWarehouse';
+import WarehouseUploadModal from './components/WarehouseUploadModal';
 
 // Use the Warehouse interface from warehouseService but ensure id is required
 interface WarehouseWithRequiredId extends Omit<Warehouse, 'id'> {
@@ -16,6 +17,7 @@ const Warehouses = () => {
     const [deletingWarehouseIds, setDeletingWarehouseIds] = useState<number[]>([]);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
     const [selectedWarehouse, setSelectedWarehouse] = useState<WarehouseWithRequiredId | null>(null);
+    const [showUploadModal, setShowUploadModal] = useState(false);
     
     // State variables for pagination and sorting
     const [page, setPage] = useState<number>(0);
@@ -114,6 +116,10 @@ const Warehouses = () => {
         setSelectedWarehouse(null); // Reset selected warehouse
     };
 
+    const handleUploadSuccess = () => {
+        fetchWarehouses();
+    };
+
     // Format date to a more readable format
     const formatDate = (dateString?: string) => {
         if (!dateString) return 'N/A';
@@ -124,10 +130,18 @@ const Warehouses = () => {
     return (
         <div className="p-4 bg-white min-h-screen">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Warehouses Management</h1>
-            <button onClick={() => {
-                setSelectedWarehouse(null);
-                setIsModalOpen(true);
-            }} className="bg-indigo-600 text-white rounded-md px-4 py-2 mb-4 hover:bg-indigo-700 transition-colors">Add Warehouse</button>
+            <div className=" items-center mb-4">
+                <button onClick={() => {
+                    setSelectedWarehouse(null);
+                    setIsModalOpen(true);
+                }} className="bg-indigo-600 text-white rounded-md px-4 py-2 mb-4 hover:bg-indigo-700 transition-colors">Add Warehouse</button>
+                <button 
+                    onClick={() => setShowUploadModal(true)}
+                    className="bg-green-600 text-white rounded mx-2 p-2"
+                >
+                    Upload Warehouses
+                </button>
+            </div>
             {isModalOpen && (
                 <AddWarehouse 
                     isOpen={isModalOpen} 
@@ -136,6 +150,11 @@ const Warehouses = () => {
                     existingWarehouse={selectedWarehouse || undefined}
                 />
             )}
+            <WarehouseUploadModal 
+                isOpen={showUploadModal}
+                onClose={() => setShowUploadModal(false)}
+                onSuccess={handleUploadSuccess}
+            />
             
             <div className="flex space-x-4 mb-4">
                 <div>
