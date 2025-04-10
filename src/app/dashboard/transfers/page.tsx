@@ -1,80 +1,189 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Transfer } from '@/types/transfer';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getTransfers } from '@/app/api/transferService';
-import { withAuth } from '@/app/components/withAuth';
+import { getWarehouses } from '@/app/api/warehouseService';
+import { Transfer, Warehouse } from '@/types/transfer';
+import TransferFilters from './components/TransferFilters';
 import TransferTable from './components/TransferTable';
 import CreateTransferModal from './components/CreateTransferModal';
+import TransferUploadModal from './components/TransferUploadModal';
 
-const TransfersPage: React.FC = () => {
+const Transfers = () => {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
-  const [totalTransfers, setTotalTransfers] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [error, setError] = useState<Error | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
+  
+  // Pagination and filtering states
+  const [page, setPage] = useState<number>(0);
+  const [size, setSize] = useState<number>(10);
+  const [sort, setSort] = useState<string>('ASC');
+  const [sortField, setSortField] = useState<string>('id');
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [totalTransfers, setTotalTransfers] = useState<number>(0);
+  
+  // Filter states
+  const [sourceWarehouse, setSourceWarehouse] = useState<number | undefined>(undefined);
+  const [destinationWarehouse, setDestinationWarehouse] = useState<number | undefined>(undefined);
+  const [type, setType] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
-  const fetchTransfers = async () => {
+  const fetchTransfers = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
     try {
-      setLoading(true);
-      const { content, totalElements, totalPages, number } = await getTransfers();
-      setTransfers(content);
-      setTotalTransfers(totalElements);
-      setTotalPages(totalPages);
-      setCurrentPage(number);
-      setError(null);
-    } catch (err) {
-      setError('Failed to fetch transfers');
-      console.error(err);
+      const where = {
+        ...(sourceWarehouse && { sourceWarehouseId: sourceWarehouse }),
+        ...(destinationWarehouse && { destinationWarehouseId: destinationWarehouse }),
+        ...(type && { type }),
+        ...(startDate && { startDate }),
+        ...(endDate && { endDate })
+      };
+
+      const data = await getTransfers(
+        page, 
+        size, 
+        sort, 
+        sortField, 
+        where
+      );
+
+      setTransfers(data.content);
+      setTotalPages(data.totalPages);
+      setTotalTransfers(data.totalElements || 0);
+    } catch (error) {
+      console.error('Error fetching transfers:', error);
+      setError(error as Error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  };
+  }, [page, size, sort, sortField, sourceWarehouse, destinationWarehouse, type, startDate, endDate]);
+
+  const fetchWarehouses = useCallback(async () => {
+    try {
+      const response = await getWarehouses();
+      // Map warehouses to the expected type
+      const warehouseItems: Warehouse[] = (
+        Array.isArray(response) ? response : (response as { items: any[] }).items || []
+      ).map(warehouse => ({
+        id: warehouse.id,
+        name: warehouse.name,
+        code: warehouse.code || '',
+        description: warehouse.description || '',
+        location: warehouse.location || '',
+        emails: warehouse.emails || [],
+        status: warehouse.status || 'active'
+      }));
+      
+      setWarehouses(warehouseItems);
+    } catch (error) {
+      console.error('Error fetching warehouses:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchWarehouses();
+  }, [fetchWarehouses]);
 
   useEffect(() => {
     fetchTransfers();
-  }, []);
+  }, [fetchTransfers]);
 
-  const handleCreateTransferSuccess = () => {
-    fetchTransfers();
+  const handleApplyFilters = (filters: {
+    sourceWarehouse?: number;
+    destinationWarehouse?: number;
+    type?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    size?: number;
+    sort?: string;
+    sortField?: string;
+  }) => {
+    setSourceWarehouse(filters.sourceWarehouse);
+    setDestinationWarehouse(filters.destinationWarehouse);
+    setType(filters.type || '');
+    setStartDate(filters.startDate || '');
+    setEndDate(filters.endDate || '');
+    
+    // Update pagination and sorting
+    if (filters.page !== undefined) setPage(filters.page);
+    if (filters.size !== undefined) setSize(filters.size);
+    if (filters.sort) setSort(filters.sort);
+    if (filters.sortField) setSortField(filters.sortField);
+  };
+
+  const handleCreateTransfer = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const handleUploadTransfer = () => {
+    setIsUploadModalOpen(true);
+  };
+
+  const handleTransferCreated = () => {
+    fetchTransfers(); // Refresh the transfers list
     setIsCreateModalOpen(false);
+  };
+
+  const handleTransferUploaded = () => {
+    fetchTransfers(); // Refresh the transfers list
+    setIsUploadModalOpen(false);
   };
 
   return (
     <div className="p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Transfers</h1>
+      <h1 className="text-black font-bold mb-4">Transfers Management</h1>
+      
+      <div className="flex space-x-2 mb-4">
         <button 
-          onClick={() => setIsCreateModalOpen(true)}
-          className="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600"
+          onClick={handleCreateTransfer} 
+          className="bg-indigo-600 text-white rounded p-2"
         >
           Create Transfer
         </button>
+        <button 
+          onClick={handleUploadTransfer} 
+          className="bg-green-600 text-white rounded p-2"
+        >
+          Upload Transfers
+        </button>
       </div>
 
-      {loading && <div>Loading transfers...</div>}
-      {error && <div className="text-red-500">{error}</div>}
-      
-      {!loading && !error && (
-        <TransferTable 
-          transfers={transfers} 
-          totalTransfers={totalTransfers}
-          totalPages={totalPages}
-          currentPage={currentPage}
-          onRefresh={fetchTransfers}
-        />
-      )}
+      <TransferFilters 
+        warehouses={warehouses} 
+        onApplyFilters={handleApplyFilters} 
+      />
+
+      <TransferTable 
+        transfers={transfers} 
+        totalTransfers={totalTransfers}
+        totalPages={totalPages}
+        currentPage={page}
+        onRefresh={fetchTransfers}
+      />
 
       {isCreateModalOpen && (
         <CreateTransferModal 
           onClose={() => setIsCreateModalOpen(false)}
-          onSuccess={handleCreateTransferSuccess}
+          onSuccess={handleTransferCreated}
+          warehouses={warehouses}
+        />
+      )}
+
+      {isUploadModalOpen && (
+        <TransferUploadModal 
+          onClose={() => setIsUploadModalOpen(false)}
+          onSuccess={handleTransferUploaded}
         />
       )}
     </div>
   );
 };
 
-export default withAuth(TransfersPage);
+export default Transfers;

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createTransfer } from '@/app/api/transferService';
 import { CreateTransferPayload } from '@/types/transfer';
-import { getWarehouses } from '@/app/api/warehouseService';
 import { getProducts } from '@/app/api/productService';
 import { Warehouse } from '@/types/warehouse';
 import { Product } from '@/types/product';
@@ -9,10 +8,14 @@ import { Product } from '@/types/product';
 interface CreateTransferModalProps {
   onClose: () => void;
   onSuccess: () => void;
+  warehouses: Warehouse[];
 }
 
-const CreateTransferModal: React.FC<CreateTransferModalProps> = ({ onClose, onSuccess }) => {
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+const CreateTransferModal: React.FC<CreateTransferModalProps> = ({ 
+  onClose, 
+  onSuccess, 
+  warehouses 
+}) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [formData, setFormData] = useState<CreateTransferPayload>({
     number: '',
@@ -27,17 +30,32 @@ const CreateTransferModal: React.FC<CreateTransferModalProps> = ({ onClose, onSu
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchInitialData = async () => {
+    const fetchProducts = async () => {
       try {
-        const warehousesResponse = await getWarehouses();
-        const productsResponse = await getProducts();
-        setWarehouses(warehousesResponse.items);
-        setProducts(productsResponse.items);
+        const response = await getProducts();
+        // Map the products to the expected type
+        const mappedProducts: Product[] = (
+          Array.isArray(response) ? response : (response as { items: any[] }).items || []
+        ).map(product => ({
+          id: product.id,
+          name: product.name,
+          code: product.code || '',
+          category: product.category || 'Uncategorized',
+          description: product.description || '',
+          price: product.price || 0,
+          sku: product.sku || '',
+          barcode: product.barcode || '',
+          unit: product.unit || '',
+          status: product.status || 'active',
+          serialized: product.serialized || false
+        }));
+        
+        setProducts(mappedProducts);
       } catch (err) {
-        setError('Failed to load initial data');
+        setError('Failed to load products');
       }
     };
-    fetchInitialData();
+    fetchProducts();
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -77,8 +95,23 @@ const CreateTransferModal: React.FC<CreateTransferModalProps> = ({ onClose, onSu
     setError(null);
 
     try {
+      // Validate required fields
+      if (!formData.number || 
+          !formData.sourceWarehouseId || 
+          !formData.destinationWarehouseId || 
+          formData.stocks.length === 0 || 
+          formData.stocks.some(stock => !stock.productId || stock.quantity <= 0)) {
+        setError('Please fill in all required fields correctly');
+        setLoading(false);
+        return;
+      }
+
+      // Create transfer
       await createTransfer(formData);
+      
+      // Close modal and refresh list
       onSuccess();
+      onClose();
     } catch (err) {
       setError('Failed to create transfer');
       console.error(err);
@@ -212,9 +245,8 @@ const CreateTransferModal: React.FC<CreateTransferModalProps> = ({ onClose, onSu
                       value={stock.quantity}
                       onChange={(e) => handleStockChange(index, 'quantity', e.target.value)}
                       className="w-full border rounded p-2"
-                      min="0"
-                      step="0.1"
                       required
+                      min="1"
                     />
                   </div>
                   <div className="flex items-end">
@@ -222,7 +254,7 @@ const CreateTransferModal: React.FC<CreateTransferModalProps> = ({ onClose, onSu
                       <button
                         type="button"
                         onClick={() => removeStockItem(index)}
-                        className="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600"
+                        className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
                       >
                         Remove
                       </button>
@@ -233,30 +265,33 @@ const CreateTransferModal: React.FC<CreateTransferModalProps> = ({ onClose, onSu
               <button
                 type="button"
                 onClick={addStockItem}
-                className="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600 mt-2"
+                className="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
               >
                 Add Stock Item
               </button>
             </div>
+
+            <div className="mt-6 flex justify-end space-x-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className={`px-4 py-2 rounded ${
+                  loading 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                }`}
+              >
+                {loading ? 'Creating...' : 'Create Transfer'}
+              </button>
+            </div>
           </form>
-        </div>
-        
-        <div className="p-6 border-t border-gray-200 flex justify-end space-x-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            form="transfer-form"
-            disabled={loading}
-            className="bg-indigo-500 text-white px-4 py-2 rounded hover:bg-indigo-600 disabled:opacity-50"
-          >
-            {loading ? 'Creating...' : 'Create Transfer'}
-          </button>
         </div>
       </div>
     </div>

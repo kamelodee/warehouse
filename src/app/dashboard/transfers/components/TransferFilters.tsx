@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Warehouse } from '@/types/transfer';
 
 interface TransferFiltersProps {
@@ -11,6 +11,10 @@ interface TransferFiltersProps {
     type?: string;
     startDate?: string;
     endDate?: string;
+    page?: number;
+    size?: number;
+    sort?: string;
+    sortField?: string;
   }) => void;
 }
 
@@ -23,24 +27,45 @@ const TransferFilters: React.FC<TransferFiltersProps> = ({
   const [type, setType] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  
+  // Pagination and sorting states
+  const [page, setPage] = useState<number>(0);
+  const [size, setSize] = useState<number>(10);
+  const [sort, setSort] = useState<string>('ASC');
+  const [sortField, setSortField] = useState<string>('id');
 
   const transferTypes = ['Incoming', 'Outgoing', 'Internal'];
 
-  const handleApplyFilters = () => {
+  const handleApplyFilters = useCallback(() => {
     const filters = {
       sourceWarehouse,
       destinationWarehouse,
       type,
       startDate,
-      endDate
+      endDate,
+      page,
+      size,
+      sort,
+      sortField
     };
     
     onApplyFilters(filters);
-  };
+  }, [
+    sourceWarehouse, 
+    destinationWarehouse, 
+    type, 
+    startDate, 
+    endDate, 
+    page, 
+    size, 
+    sort, 
+    sortField, 
+    onApplyFilters
+  ]);
 
   useEffect(() => {
-    console.log('Warehouses:', warehouses);
-  }, [warehouses]);
+    handleApplyFilters();
+  }, [page, size, sort, sortField, handleApplyFilters]);
 
   const handleResetFilters = () => {
     setSourceWarehouse(undefined);
@@ -48,13 +73,21 @@ const TransferFilters: React.FC<TransferFiltersProps> = ({
     setType('');
     setStartDate('');
     setEndDate('');
+    setPage(0);
+    setSize(10);
+    setSort('ASC');
+    setSortField('id');
     
     onApplyFilters({
       sourceWarehouse: undefined,
       destinationWarehouse: undefined,
       type: '',
       startDate: '',
-      endDate: ''
+      endDate: '',
+      page: 0,
+      size: 10,
+      sort: 'ASC',
+      sortField: 'id'
     });
   };
 
@@ -67,14 +100,14 @@ const TransferFilters: React.FC<TransferFiltersProps> = ({
   ].filter(filter => filter !== undefined && filter !== '').length;
 
   return (
-    <div className=" rounded-lg p-4 mb-4">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="rounded-lg p-2 mb-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Source Warehouse</label>
+          <label className="block text-xs text-gray-700 mb-1">Source Warehouse</label>
           <select 
             value={sourceWarehouse || ''} 
             onChange={(e) => setSourceWarehouse(e.target.value ? Number(e.target.value) : undefined)}
-            className="w-full border border-gray-300 rounded-md p-2"
+            className="w-full border border-gray-300 rounded-md px-1 py-1 text-xs"
           >
             <option value="">All Warehouses</option>
             {warehouses.map(warehouse => (
@@ -86,11 +119,11 @@ const TransferFilters: React.FC<TransferFiltersProps> = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Destination Warehouse</label>
+          <label className="block text-xs text-gray-700 mb-1">Destination Warehouse</label>
           <select 
             value={destinationWarehouse || ''} 
             onChange={(e) => setDestinationWarehouse(e.target.value ? Number(e.target.value) : undefined)}
-            className="w-full border border-gray-300 rounded-md p-2"
+            className="w-full border border-gray-300 rounded-md px-1 py-1 text-xs"
           >
             <option value="">All Warehouses</option>
             {warehouses.map(warehouse => (
@@ -102,11 +135,11 @@ const TransferFilters: React.FC<TransferFiltersProps> = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Transfer Type</label>
+          <label className="block text-xs text-gray-700 mb-1">Transfer Type</label>
           <select 
             value={type} 
             onChange={(e) => setType(e.target.value)}
-            className="w-full border border-gray-300 rounded-md p-2"
+            className="w-full border border-gray-300 rounded-md px-1 py-1 text-xs"
           >
             <option value="">All Types</option>
             {transferTypes.map(transferType => (
@@ -118,46 +151,47 @@ const TransferFilters: React.FC<TransferFiltersProps> = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+          <label className="block text-xs text-gray-700 mb-1">Start Date</label>
           <input 
             type="date" 
             value={startDate} 
             onChange={(e) => setStartDate(e.target.value)}
-            className="w-full border border-gray-300 rounded-md p-2"
+            className="w-full border border-gray-300 rounded-md px-1 py-1 text-xs"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+          <label className="block text-xs text-gray-700 mb-1">End Date</label>
           <input 
             type="date" 
             value={endDate} 
             onChange={(e) => setEndDate(e.target.value)}
-            className="w-full border border-gray-300 rounded-md p-2"
+            className="w-full border border-gray-300 rounded-md px-1 py-1 text-xs"
           />
         </div>
 
-        <div className="flex items-end space-x-2">
+        <div className="flex items-end">
           <button 
             onClick={handleApplyFilters}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
+            className="w-full bg-indigo-600 text-white rounded-md px-2 py-1 text-xs hover:bg-indigo-700 transition-colors"
           >
             Apply Filters
           </button>
-          {activeFiltersCount > 0 && (
-            <button 
-              onClick={handleResetFilters}
-              className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors"
-            >
-              Clear Filters
-            </button>
-          )}
+        </div>
+
+        <div className="flex items-end">
+          <button 
+            onClick={handleResetFilters}
+            className="w-full bg-gray-200 text-gray-700 rounded-md px-2 py-1 text-xs hover:bg-gray-300"
+          >
+            Clear Filters
+          </button>
         </div>
       </div>
 
       {activeFiltersCount > 0 && (
-        <div className="mt-4 flex items-center space-x-2">
-          <span className="text-sm text-gray-600">Active Filters:</span>
+        <div className="mt-2 flex items-center space-x-2">
+          <span className="text-xs text-gray-600">Active Filters:</span>
           {sourceWarehouse && (
             <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs">
               Source: {warehouses.find(w => w.id === sourceWarehouse)?.name}
