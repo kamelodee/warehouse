@@ -164,13 +164,50 @@ const Shipments = () => {
         setError(null);
         
         try {
-            const response = await searchShipments({ 
+            // Get user data for warehouse filtering
+            const user = localStorage.getItem('user');
+            const userData: { role: string; warehouse?: { id: number } } | null = user ? JSON.parse(user) : null;
+            
+            // Prepare search params with proper typing
+            const searchParams: {
+                page: number;
+                size: number;
+                sort: string;
+                sortField: string;
+                searchQuery: string;
+                where?: {
+                    leftHand: { value: string };
+                    matchMode: "EQUAL";
+                    rightHand: { value: any };
+                    operator?: "AND" | "OR";
+                }[];
+            } = { 
                 page, 
                 size, 
                 sort, 
                 sortField, 
                 searchQuery 
-            });
+            };
+            
+            // Add warehouse filter for WAREHOUSE_USER
+            if (userData?.role === 'WAREHOUSE_USER' && userData.warehouse?.id) {
+                searchParams.where = [
+                    {
+                        leftHand: { value: "sourceWarehouseId" },
+                        matchMode: "EQUAL",
+                        rightHand: { value: userData.warehouse.id },
+                        operator: "OR"
+                    },
+                    {
+                        leftHand: { value: "destinationWarehouseId" },
+                        matchMode: "EQUAL",
+                        rightHand: { value: userData.warehouse.id },
+                        operator: "OR"
+                    }
+                ];
+            }
+            
+            const response = await searchShipments(searchParams);
             
             // Convert Shipment[] to Shipment[]
             const convertedShipments = response.content.map(convertToShipmentWithRequiredId);

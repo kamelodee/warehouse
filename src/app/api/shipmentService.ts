@@ -53,12 +53,20 @@ export interface Shipment {
     notes?: string;
 }
 
+interface WhereCondition {
+    leftHand: { value: string };
+    matchMode: "EQUAL" | "LIKE" | "IN";
+    rightHand: { value: any };
+    operator?: "AND" | "OR";
+}
+
 interface ShipmentSearchParams {
     page?: number;
     size?: number;
     sort?: string;
     sortField?: string;
     searchQuery?: string;
+    where?: WhereCondition[];
 }
 
 interface ShipmentSearchResponse {
@@ -103,8 +111,6 @@ const logApiError = (
         timestamp: new Date().toISOString()
     });
 };
-
-
 
 /**
  * Handle API response and error
@@ -205,7 +211,7 @@ const handleResponseWithPossibleNoContent = async <T>(response: Response, method
  * Search for shipments with pagination and sorting
  */
 export const searchShipments = async (params: ShipmentSearchParams = {}): Promise<ShipmentSearchResponse> => {
-    const { page = 0, size = 10, sort = 'ASC', sortField = 'id', searchQuery } = params;
+    const { page = 0, size = 10, sort = 'ASC', sortField = 'id', searchQuery, where } = params;
     const token = getToken();
     
     if (!token) {
@@ -223,7 +229,9 @@ export const searchShipments = async (params: ShipmentSearchParams = {}): Promis
             {
                 method: 'POST',
                 headers: getHeaders(),
-                body: JSON.stringify({})
+                body: JSON.stringify({
+                    where: where || []
+                })
             }
         );
         
@@ -239,6 +247,7 @@ export const searchShipments = async (params: ShipmentSearchParams = {}): Promis
             sort,
             sortField,
             searchQuery,
+            where,
             timestamp: new Date().toISOString()
         });
         
