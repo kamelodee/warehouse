@@ -132,18 +132,75 @@ interface DashboardError {
   endpoint?: string;
 }
 
-const prepareFetchOptions = (token: string) => ({
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
-  },
-  body: JSON.stringify({
-    size: 1000,
-    number: 0,
-    includeMetrics: true
-  })
-});
+interface UserData {
+  role: 'SUPER_ADMIN' | 'WAREHOUSE_USER' | 'USER';
+  warehouse?: {
+    id: number;
+    name: string;
+  };
+}
+
+const prepareFetchOptions = (token: string, selectedWarehouse: Warehouse | null) => {
+  // Get user data from localStorage
+  const user = localStorage.getItem('user');
+  const userData: UserData | null = user ? JSON.parse(user) : null;
+  const userRole = userData?.role;
+  const userWarehouseId = userData?.warehouse?.id;
+  console.log('User role:', userRole);
+  console.log('User warehouse ID:', userWarehouseId);
+  console.log('Selected warehouse ID:', selectedWarehouse?.id);
+
+  // Build query parameters
+  const queryParams = new URLSearchParams({
+    size: '10',
+    page: '0',
+    includeMetrics: 'true'
+  }).toString();
+
+  // Get the selected warehouse for admin users
+  const selectedWarehouseId = userRole === 'SUPER_ADMIN' ? selectedWarehouse?.id : userWarehouseId;
+
+  // Base request options
+  const baseOptions = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    queryParams
+  };
+
+  // Only add warehouse filters if a warehouse is selected or for warehouse users
+  if ((userRole === 'WAREHOUSE_USER' || (userRole === 'SUPER_ADMIN' && selectedWarehouse !== null))) {
+    return {
+      ...baseOptions,
+      body: JSON.stringify({
+        where: [
+          {
+            leftHand: { value: "sourceWarehouseId" },
+            matchMode: "EQUAL",
+            rightHand: { value: selectedWarehouseId },
+            operator: "OR"
+          },
+          {
+            leftHand: { value: "destinationWarehouseId" },
+            matchMode: "EQUAL",
+            rightHand: { value: selectedWarehouseId },
+            operator: "OR"
+          }
+        ]
+      })
+    };
+  }
+
+  // Return default options without warehouse filters
+  return {
+    ...baseOptions,
+    body: JSON.stringify({
+      where: []
+    })
+  };
+};
 
 const normalizeShipment = (shipment: Partial<Shipment>): RecentShipment => ({
   id: shipment.id ? Number(shipment.id) : Math.floor(Math.random() * 1000),
@@ -170,20 +227,42 @@ const generateDefaultShipments = (): RecentShipment[] => [
   }
 ];
 
-const extractShippingMetrics = (shippingData: any): ShippingMetrics => ({
-  totalShipments: shippingData.totalElements || 0,
-  inTransitShipments: shippingData.inTransitShipments || 0,
-  deliveredShipments: shippingData.deliveredShipments || 0,
-  pendingShipments: shippingData.pendingShipments || 0,
-  receivedShipments: shippingData.receivedShipments || 0,
-  transferredShipments: shippingData.transferredShipments || 0,
-  leftShipments: shippingData.leftShipments || 0,
-  onHoldShipments: shippingData.onHoldShipments || 0,
-  cancelledShipments: shippingData.cancelledShipments || 0,
-  totalCompleteShipments: shippingData.totalCompleteShipments || 0,
-  totalIncompleteShipments: shippingData.totalIncompleteShipments || 0,
-  completedShipments: shippingData.completedShipments || 0
-});
+const extractShippingMetrics = (data: any): ShippingMetrics => {
+  // If no data or content, return default metrics
+  if (!data || !data.content) {
+    return {
+      totalShipments: 0,
+      inTransitShipments: 0,
+      deliveredShipments: 0,
+      pendingShipments: 0,
+      receivedShipments: 0,
+      transferredShipments: 0,
+      leftShipments: 0,
+      onHoldShipments: 0,
+      cancelledShipments: 0,
+      totalCompleteShipments: 0,
+      totalIncompleteShipments: 0,
+      completedShipments: 0
+    };
+  }
+
+  // Filter shipments based on status
+  const shipments = data.content;
+  return {
+    totalShipments: shipments.length,
+    inTransitShipments: shipments.filter((s: any) => s.status === 'IN_TRANSIT').length,
+    deliveredShipments: shipments.filter((s: any) => s.status === 'DELIVERED').length,
+    pendingShipments: shipments.filter((s: any) => s.status === 'PENDING').length,
+    receivedShipments: shipments.filter((s: any) => s.status === 'RECEIVED').length,
+    transferredShipments: shipments.filter((s: any) => s.status === 'TRANSFERRED').length,
+    leftShipments: shipments.filter((s: any) => s.status === 'LEFT').length,
+    onHoldShipments: shipments.filter((s: any) => s.status === 'ON_HOLD').length,
+    cancelledShipments: shipments.filter((s: any) => s.status === 'CANCELLED').length,
+    totalCompleteShipments: shipments.filter((s: any) => s.status === 'DELIVERED' || s.status === 'COMPLETED').length,
+    totalIncompleteShipments: shipments.filter((s: any) => s.status !== 'DELIVERED' && s.status !== 'COMPLETED').length,
+    completedShipments: shipments.filter((s: any) => s.status === 'COMPLETED').length
+  };
+};
 
 // Mapping function to convert service warehouse to project warehouse
 const mapWarehouse = (serviceWarehouse: WarehouseService): Warehouse => ({
@@ -287,68 +366,109 @@ function DashboardPage() {
 
   const fetchWarehouses = useCallback(async () => {
     try {
-      const { items: serviceWarehouses } = await getWarehouses();
-      
-      const mappedWarehouses = serviceWarehouses.map(mapWarehouse);
-      
-      if (mappedWarehouses.length > 0) {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        console.error('No token found');
+        return;
+      }
+
+      const response = await safeFetch('https://stock.hisense.com.gh/api/v1.0/warehouses/search?page=0&size=100&sort=ASC&sortField=id', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          size: 100,
+          page: 0
+        })
+      });
+
+      if (response?.content && Array.isArray(response.content)) {
+        const mappedWarehouses = response.content.map(mapWarehouse);
         setWarehouses(mappedWarehouses);
-        setSelectedWarehouse(mappedWarehouses[0]);
+        
+        // For warehouse users, set their warehouse as selected
+        const user = localStorage.getItem('user');
+        const userData: UserData | null = user ? JSON.parse(user) : null;
+        if (userData?.role === 'WAREHOUSE_USER' && userData?.warehouse) {
+          const userWarehouse = mappedWarehouses.find((w: Warehouse) => w.id === userData.warehouse.id);
+          if (userWarehouse) {
+            setSelectedWarehouse(userWarehouse);
+          }
+        }
       }
     } catch (error) {
+      console.error('Error fetching warehouses:', error);
       logError({
-        type: 'network',
-        message: 'Failed to fetch warehouses',
+        type: 'unknown',
+        message: error instanceof Error ? error.message : 'Failed to fetch warehouses'
       });
     }
   }, []);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      setIsLoading(true);
-      setErrors([]);
+  const fetchDashboardData = useCallback(async () => {
+    setIsLoading(true);
+    setErrors([]);
 
-      try {
-        const token = localStorage.getItem('accessToken');
-        console.log("Token from localStorage:", token);
-        
-        if (!token || token.trim() === '') {
-          console.error('No valid token found');
-          router.push('/login');
-          return;
-        }
-
-        const fetchOptions = prepareFetchOptions(token);
-
-        const [shippingData] = await Promise.all([
-          safeFetch('https://stock.hisense.com.gh/api/v1.0/shipments/search', fetchOptions)
-        ]);
-
-        console.log('Shipping Data Payload:', JSON.stringify(shippingData, null, 2));
-
-        const recentShipments = shippingData.content
-          ? shippingData.content.slice(0, 5).map(normalizeShipment)
-          : generateDefaultShipments();
-
-        setDashboardData(prev => ({
-          ...prev,
-          shippingMetrics: extractShippingMetrics(shippingData),
-          recentShipments: recentShipments
-        }));
-
-      } catch (err) {
-        logError({
-          type: 'unknown',
-          message: err instanceof Error ? err.message : 'An unexpected error occurred'
-        });
-      } finally {
-        setIsLoading(false);
+    try {
+      const token = localStorage.getItem('accessToken');
+      console.log("Token from localStorage:", token);
+      
+      if (!token || token.trim() === '') {
+        console.error('No valid token found');
+        router.push('/login');
+        return;
       }
-    };
 
-    fetchDashboardData();
+      const fetchOptions = prepareFetchOptions(token, selectedWarehouse);
+      console.log('Fetch options:', fetchOptions);
+
+      const [shippingData] = await Promise.all([
+        safeFetch(`https://stock.hisense.com.gh/api/v1.0/shipments/search?${fetchOptions.queryParams}`, fetchOptions)
+      ]);
+
+      console.log('Shipping Data Payload:', JSON.stringify(shippingData, null, 2));
+
+      // Update metrics based on filtered data
+      const metrics = extractShippingMetrics(shippingData);
+      console.log('Updated Metrics:', metrics);
+
+      const recentShipments = shippingData.content
+        ? shippingData.content.slice(0, 5).map(normalizeShipment)
+        : generateDefaultShipments();
+
+      setDashboardData(prev => ({
+        ...prev,
+        shippingMetrics: metrics,
+        recentShipments: recentShipments
+      }));
+
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      logError({
+        type: 'unknown',
+        message: err instanceof Error ? err.message : 'An unexpected error occurred'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [router, selectedWarehouse]);
+
+  useEffect(() => {
     fetchWarehouses();
-  }, []);
+  }, [fetchWarehouses]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  // Handle warehouse selection change
+  const handleWarehouseChange = useCallback((warehouse: Warehouse | null) => {
+    setSelectedWarehouse(warehouse);
+    // Fetch shipments with the new warehouse selection
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   // Error display component
   const ErrorDisplay = () => {
@@ -385,7 +505,6 @@ function DashboardPage() {
     startDate?: string;
     endDate?: string;
     sourceWarehouse?: string;
-    destinationWarehouse?: string;
   }
 
   // State for shipment filters
@@ -393,133 +512,109 @@ function DashboardPage() {
     status: 'all'
   });
 
-  // Shipment Filters Component
-  const ShipmentFilters: React.FC = () => {
-    // Render filter badges
-    const renderFilterBadges = (): React.ReactNode[] => {
-      const badges: React.ReactNode[] = [];
-
-      if (shipmentFilters.status && shipmentFilters.status !== 'all') {
-        badges.push(
-          <span key="status" className="bg-blue-100 text-blue-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">
-            Status: {shipmentFilters.status}
-            <button 
-              onClick={() => setShipmentFilters(prev => ({ ...prev, status: 'all' }))}
-              className="ml-1 text-blue-600 hover:text-blue-800"
-            >
-              <FaTimes className="inline-block w-3 h-3" />
-            </button>
-          </span>
-        );
-      }
-
-      // Add warehouse filter badge
-      if (shipmentFilters.sourceWarehouse) {
-        badges.push(
-          <span key="warehouse" className="bg-green-100 text-green-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded">
-            Warehouse: {shipmentFilters.sourceWarehouse}
-            <button 
-              onClick={() => setShipmentFilters(prev => ({ ...prev, sourceWarehouse: undefined }))}
-              className="ml-1 text-green-600 hover:text-green-800"
-            >
-              <FaTimes className="inline-block w-3 h-3" />
-            </button>
-          </span>
-        );
-      }
-
-      // Existing date and other filter badges...
-      return badges;
-    };
-
-    // Clear filters function
-    const clearFilters = () => {
-      setShipmentFilters({ status: 'all' });
-    };
+  const ShipmentFilters = () => {
+    // Get user data for role-based rendering
+    const user = localStorage.getItem('user');
+    const userData: UserData | null = user ? JSON.parse(user) : null;
 
     return (
-      <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-            <FaFilter className="mr-2 text-blue-600" /> Shipment Filters
-          </h3>
-          {Object.keys(shipmentFilters).length > 1 && (
-            <button 
-              onClick={clearFilters}
-              className="text-sm text-red-600 hover:text-red-800 flex items-center"
-            >
-              <FaTimes className="mr-1" /> Clear All Filters
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Existing status filter */}
+      <div className="mb-6 bg-white p-4 rounded-lg shadow-md">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Filter Shipments</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Status Filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Shipment Status</label>
+            <label className="block text-sm font-medium text-gray-900 mb-1">Status</label>
             <select
-              value={shipmentFilters.status || 'all'}
+              value={shipmentFilters.status || ''}
               onChange={(e) => setShipmentFilters(prev => ({ 
                 ...prev, 
-                status: e.target.value as ShipmentFilters['status'] 
-              }))}
-              className="w-full border border-indigo-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
-            >
-              <option value="all">All Shipments</option>
-              <option value="in_transit">In Transit</option>
-              <option value="delivered">Delivered</option>
-              <option value="pending">Pending</option>
-            </select>
-          </div>
-
-          {/* Warehouse Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-1">Warehouse</label>
-            <select
-              value={shipmentFilters.sourceWarehouse || ''}
-              onChange={(e) => setShipmentFilters(prev => ({ 
-                ...prev, 
-                sourceWarehouse: e.target.value || undefined 
+                status: e.target.value as ShipmentFilters['status'] || undefined 
               }))}
               className="w-full border border-indigo-400 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
             >
-              <option value="">All Warehouses</option>
-              {warehouses.map(warehouse => (
-                <option key={warehouse.id} value={warehouse.name}>
-                  {warehouse.name}
-                </option>
-              ))}
+              <option value="">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="in_transit">In Transit</option>
+              <option value="delivered">Delivered</option>
             </select>
           </div>
 
-          {/* Existing date filters */}
+          {/* Warehouse Filter - Only visible for SUPER_ADMIN */}
+          {userData?.role === 'SUPER_ADMIN' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-1">Warehouse</label>
+              <select
+                value={selectedWarehouse?.id || ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '') {
+                    // Clear selection to show all warehouses
+                    handleWarehouseChange(null);
+                  } else {
+                    const selected = warehouses.find(w => w.id === Number(value));
+                    if (selected) handleWarehouseChange(selected);
+
+                    setShipmentFilters(prev => ({ 
+                      ...prev, 
+                      sourceWarehouse: selectedWarehouse?.name || undefined 
+                    }))
+                  }
+                }}
+                className="w-full border border-indigo-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {warehouses.map(warehouse => (
+                  <option key={warehouse.id} value={warehouse.id}>
+                    {warehouse.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Date filters */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-            <input 
-              type="date" 
+            <label className="block text-sm font-medium text-gray-900 mb-1">Start Date</label>
+            <input
+              type="date"
               value={shipmentFilters.startDate || ''}
-              onChange={(e) => setShipmentFilters(prev => ({ ...prev, startDate: e.target.value }))}
-              className="w-full border border-indigo-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              onChange={(e) => setShipmentFilters(prev => ({ 
+                ...prev, 
+                startDate: e.target.value || undefined 
+              }))}
+              className="w-full border border-indigo-400 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-            <input 
-              type="date" 
+            <label className="block text-sm font-medium text-gray-900 mb-1">End Date</label>
+            <input
+              type="date"
               value={shipmentFilters.endDate || ''}
-              onChange={(e) => setShipmentFilters(prev => ({ ...prev, endDate: e.target.value }))}
-              className="w-full border border-indigo-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              onChange={(e) => setShipmentFilters(prev => ({ 
+                ...prev, 
+                endDate: e.target.value || undefined 
+              }))}
+              className="w-full border border-indigo-400 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
             />
           </div>
         </div>
 
-        {/* Active Filters Badges */}
-        {Object.keys(shipmentFilters).length > 1 && (
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="text-sm text-gray-600 mr-2">Active Filters:</span>
-            {renderFilterBadges()}
-          </div>
-        )}
+        {/* Active Filters Display */}
+        <div className="mt-4 flex flex-wrap gap-2">
+          {Object.entries(shipmentFilters).map(([key, value]) => {
+            if (!value) return null;
+            return (
+              <span key={key} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
+                {key}: {value}
+                <button
+                  onClick={() => setShipmentFilters(prev => ({ ...prev, [key]: undefined }))}
+                  className="ml-2 inline-flex text-indigo-400 hover:text-indigo-600"
+                >
+                  <FaTimes className="h-4 w-4" />
+                </button>
+              </span>
+            );
+          })}
+        </div>
       </div>
     );
   };
@@ -553,6 +648,7 @@ function DashboardPage() {
       {errors.length > 0 && <ErrorDisplay />}
       
       <div className="container mx-auto">
+        
         <ShipmentFilters />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-3xl">
