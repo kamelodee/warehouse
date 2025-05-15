@@ -182,7 +182,7 @@ const InventoryFilters: React.FC<InventoryFiltersProps> = ({ onFilterChange }) =
                 value={searchQuery}
                 onChange={handleSearchChange}
                 placeholder="Serial number, product, warehouse..."
-                className="search-input"
+                className="border rounded p-1 text-black"
               />
               <div className="form-helper-text">Search by serial number, product name, etc.</div>
             </div>
@@ -195,6 +195,7 @@ const InventoryFilters: React.FC<InventoryFiltersProps> = ({ onFilterChange }) =
                 id="status-select"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
+                className='border rounded p-1 text-black'
               >
                 <option value="">All</option>
                 <option value="active">Active</option>
@@ -213,6 +214,7 @@ const InventoryFilters: React.FC<InventoryFiltersProps> = ({ onFilterChange }) =
                 value={warehouseFilter}
                 onChange={(e) => setWarehouseFilter(e.target.value)}
                 disabled={loading}
+                className='border rounded p-1 text-black'
               >
                 <option value="">All</option>
                 {warehouses.map(warehouse => (
@@ -227,7 +229,7 @@ const InventoryFilters: React.FC<InventoryFiltersProps> = ({ onFilterChange }) =
 
           <div className="filter-item date-range">
             <div className="form-control">
-              <label htmlFor="start-date">
+              <label htmlFor="start-date" className='border rounded p-1 text-black'>
                 <MdCalendarToday className="icon" />
                 Date Range
               </label>
@@ -238,9 +240,11 @@ const InventoryFilters: React.FC<InventoryFiltersProps> = ({ onFilterChange }) =
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   placeholder="Start date"
+                  className='border rounded p-1 text-black'
                 />
-                <span className="date-separator">to</span>
+                <span className="date-separator border rounded p-1 text-black">to</span>
                 <input
+                className='border rounded p-1 text-black'
                   id="end-date"
                   type="date"
                   value={endDate}
