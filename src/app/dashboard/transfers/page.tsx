@@ -1,13 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { getTransfers } from '@/app/api/transferService';
+import { getTransfers, refreshTransfers } from '@/app/api/transferService';
 import { getWarehouses } from '@/app/api/warehouseService';
 import { Transfer, Warehouse } from '@/types/transfer';
 import TransferFilters from './components/TransferFilters';
 import TransferTable from './components/TransferTable';
 import CreateTransferModal from './components/CreateTransferModal';
-import TransferUploadModal from './components/TransferUploadModal';
 
 const Transfers = () => {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
@@ -15,7 +14,7 @@ const Transfers = () => {
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   
   // Pagination and filtering states
   const [page, setPage] = useState<number>(0);
@@ -122,18 +121,24 @@ const Transfers = () => {
     setIsCreateModalOpen(true);
   };
 
-  const handleUploadTransfer = () => {
-    setIsUploadModalOpen(true);
+  const handleRefreshTransfers = async () => {
+    setIsRefreshing(true);
+    setError(null);
+    
+    try {
+      await refreshTransfers();
+      fetchTransfers(); // Refresh the transfers list after successful refresh
+    } catch (error) {
+      console.error('Error refreshing transfers:', error);
+      setError(error as Error);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const handleTransferCreated = () => {
     fetchTransfers(); // Refresh the transfers list
     setIsCreateModalOpen(false);
-  };
-
-  const handleTransferUploaded = () => {
-    fetchTransfers(); // Refresh the transfers list
-    setIsUploadModalOpen(false);
   };
 
   return (
@@ -143,15 +148,18 @@ const Transfers = () => {
       <div className="flex space-x-2 mb-4">
         <button 
           onClick={handleCreateTransfer} 
-          className="bg-indigo-600 text-white rounded p-2"
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md"
         >
           Create Transfer
         </button>
         <button 
-          onClick={handleUploadTransfer} 
-          className="bg-green-600 text-white rounded p-2"
+          onClick={handleRefreshTransfers} 
+          className={`${isRefreshing 
+            ? 'bg-gray-400 cursor-not-allowed' 
+            : 'bg-green-500 hover:bg-green-600'} text-white font-semibold py-2 px-4 rounded-md`}
+          disabled={isRefreshing}
         >
-          Upload Transfers
+          {isRefreshing ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
 
@@ -176,12 +184,7 @@ const Transfers = () => {
         />
       )}
 
-      {isUploadModalOpen && (
-        <TransferUploadModal 
-          onClose={() => setIsUploadModalOpen(false)}
-          onSuccess={handleTransferUploaded}
-        />
-      )}
+
     </div>
   );
 };

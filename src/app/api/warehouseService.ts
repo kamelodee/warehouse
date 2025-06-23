@@ -24,6 +24,62 @@ interface WarehouseSearchResponse {
 
 const API_BASE_URL = 'https://stock.hisense.com.gh/api/v1.0';
 
+// Refresh functions for various entities
+export const refreshDrivers = async (): Promise<void> => {
+  const token = getToken();
+  if (!token) throw new Error('No authentication token found');
+
+  const response = await fetch(`${API_BASE_URL}/drivers/refresh`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  return handleResponse(response, 'POST', '/drivers/refresh');
+};
+
+export const refreshProducts = async (): Promise<void> => {
+  const token = getToken();
+  if (!token) throw new Error('No authentication token found');
+
+  const response = await fetch(`${API_BASE_URL}/products/refresh`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  return handleResponse(response, 'POST', '/products/refresh');
+};
+
+export const refreshTransfers = async (): Promise<void> => {
+  const token = getToken();
+  if (!token) throw new Error('No authentication token found');
+
+  const response = await fetch(`${API_BASE_URL}/transfers/refresh`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  return handleResponse(response, 'POST', '/transfers/refresh');
+};
+
+export const refreshVehicles = async (): Promise<void> => {
+  const token = getToken();
+  if (!token) throw new Error('No authentication token found');
+
+  const response = await fetch(`${API_BASE_URL}/vehicles/refresh`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  return handleResponse(response, 'POST', '/vehicles/refresh');
+};
+
+export const refreshWarehouses = async (): Promise<void> => {
+  const token = getToken();
+  if (!token) throw new Error('No authentication token found');
+
+  const response = await fetch(`${API_BASE_URL}/warehouses/refresh`, {
+    method: 'POST',
+    headers: getHeaders()
+  });
+  return handleResponse(response, 'POST', '/warehouses/refresh');
+};
+
 /**
  * Get the authentication token from session storage
  */

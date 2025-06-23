@@ -1,8 +1,7 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import { searchWarehouses, Warehouse, deleteWarehouse, updateWarehouse } from '../../api/warehouseService';
+import { searchWarehouses, Warehouse, deleteWarehouse, updateWarehouse, refreshWarehouses } from '../../api/warehouseService';
 import AddWarehouse from './AddWarehouse';
-import WarehouseUploadModal from './components/WarehouseUploadModal';
 
 // Use the Warehouse interface from warehouseService but ensure id is required
 interface WarehouseWithRequiredId extends Omit<Warehouse, 'id'> {
@@ -17,7 +16,7 @@ const Warehouses = () => {
     const [deletingWarehouseIds, setDeletingWarehouseIds] = useState<number[]>([]);
     const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
     const [selectedWarehouse, setSelectedWarehouse] = useState<WarehouseWithRequiredId | null>(null);
-    const [showUploadModal, setShowUploadModal] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
     
     // State variables for pagination and sorting
     const [page, setPage] = useState<number>(0);
@@ -116,8 +115,19 @@ const Warehouses = () => {
         setSelectedWarehouse(null); // Reset selected warehouse
     };
 
-    const handleUploadSuccess = () => {
-        fetchWarehouses();
+    const handleRefreshWarehouses = async () => {
+        setIsRefreshing(true);
+        setError(null);
+        
+        try {
+            await refreshWarehouses();
+            fetchWarehouses(); // Refresh the warehouses list after successful refresh
+        } catch (error) {
+            console.error('Error refreshing warehouses:', error);
+            setError(error as Error);
+        } finally {
+            setIsRefreshing(false);
+        }
     };
 
     // Format date to a more readable format
@@ -128,18 +138,26 @@ const Warehouses = () => {
     };
 
     return (
-        <div className="p-4 bg-white min-h-screen">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Warehouses Management</h1>
-            <div className=" items-center mb-4">
-                <button onClick={() => {
-                    setSelectedWarehouse(null);
-                    setIsModalOpen(true);
-                }} className="bg-indigo-600 text-white rounded-md px-4 py-2 mb-4 hover:bg-indigo-700 transition-colors">Add Warehouse</button>
+        <div className="p-4">
+            <h1 className="text-black font-bold mb-4">Warehouses Management</h1>
+            <div className="flex space-x-2 mb-4">
                 <button 
-                    onClick={() => setShowUploadModal(true)}
-                    className="bg-green-600 text-white rounded mx-2 p-2"
+                    onClick={() => {
+                        setSelectedWarehouse(null);
+                        setIsModalOpen(true);
+                    }} 
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md"
                 >
-                    Upload Warehouses
+                    Add Warehouse
+                </button>
+                <button 
+                    onClick={handleRefreshWarehouses}
+                    className={`${isRefreshing 
+                        ? 'bg-gray-400 cursor-not-allowed' 
+                        : 'bg-green-500 hover:bg-green-600'} text-white font-semibold py-2 px-4 rounded-md`}
+                    disabled={isRefreshing}
+                >
+                    {isRefreshing ? 'Refreshing...' : 'Refresh'}
                 </button>
             </div>
             {isModalOpen && (
@@ -150,11 +168,7 @@ const Warehouses = () => {
                     existingWarehouse={selectedWarehouse || undefined}
                 />
             )}
-            <WarehouseUploadModal 
-                isOpen={showUploadModal}
-                onClose={() => setShowUploadModal(false)}
-                onSuccess={handleUploadSuccess}
-            />
+
             
             <div className="flex space-x-4 mb-4">
                 <div>
@@ -198,25 +212,25 @@ const Warehouses = () => {
                     <button 
                         onClick={fetchWarehouses} 
                         disabled={isLoading}
-                        className="bg-indigo-600 text-white rounded-md px-4 py-2 hover:bg-indigo-700 transition-colors disabled:bg-indigo-300"
+                        className="bg-indigo-600 text-white rounded p-1"
                     >
                         {isLoading ? 'Loading...' : 'Apply Filters'}
                     </button>
                 </div>
             </div>
-            <div className="pagination mb-4 flex items-center justify-start text-gray-900">
+            <div className="pagination mb-4 text-black">
                 <button 
                     onClick={() => setPage(prev => Math.max(prev - 1, 0))} 
                     disabled={page === 0 || isLoading} 
-                    className="bg-gray-200 text-gray-800 rounded-md px-4 py-2 mr-2 hover:bg-gray-300 disabled:opacity-50"
+                    className="bg-gray-300 rounded p-2 mr-2"
                 >
                     Previous
                 </button>
-                <span className="mx-2 text-gray-900 font-medium">Page {page + 1} of {totalPages}</span>
+                <span className="mx-2 text-black">Page {page + 1} of {totalPages}</span>
                 <button 
                     onClick={() => setPage(prev => Math.min(prev + 1, totalPages - 1))} 
                     disabled={page + 1 === totalPages || isLoading} 
-                    className="bg-gray-200 text-gray-800 rounded-md px-4 py-2 ml-2 hover:bg-gray-300 disabled:opacity-50"
+                    className="bg-gray-300 rounded p-2 ml-2"
                 >
                     Next
                 </button>
@@ -256,13 +270,13 @@ const Warehouses = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                                         <button 
                                             onClick={() => handleEditWarehouse(warehouse)}
-                                            className="bg-indigo-600 text-white rounded-md px-3 py-1 hover:bg-indigo-700 transition-colors"
+                                            className="text-blue-500 hover:text-blue-700 mr-4"
                                         >
                                             Edit    
                                         </button>
                                         <button 
                                             onClick={() => handleDelete(warehouse.id)}
-                                            className="bg-red-600 text-white rounded-md px-3 py-1 hover:bg-red-700 transition-colors"
+                                            className={`${deletingWarehouseIds.includes(warehouse.id) ? 'text-gray-400' : 'text-red-500 hover:text-red-700'}`}
                                             disabled={deletingWarehouseIds.includes(warehouse.id)}
                                         >
                                             {deletingWarehouseIds.includes(warehouse.id) ? 'Deleting...' : 'Delete'}

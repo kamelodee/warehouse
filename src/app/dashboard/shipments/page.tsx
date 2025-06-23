@@ -1,10 +1,11 @@
 'use client';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { searchShipments, deleteShipment, updateShipment, Shipment, ProductSerialNumber } from '../../api/shipmentService';
-import { searchWarehouses, Warehouse } from '../../api/warehouseService';
+import { searchWarehouses, Warehouse, refreshDrivers, refreshProducts, refreshTransfers, refreshVehicles, refreshWarehouses } from '../../api/warehouseService';
 import { searchVehicles, Vehicle } from '../../api/vehicleService';
 import ShipmentDetailsModal from './ShipmentDetailsModal';
 import { FaTrash, FaEye } from 'react-icons/fa';
+import { MdRefresh } from 'react-icons/md';
 import toast, { Toaster } from 'react-hot-toast'; // Update toast import
 
 // Use the Shipment interface from shipmentService but ensure id is required
@@ -221,6 +222,32 @@ const Shipments = () => {
             setIsLoading(false);
         }
     }, [token, page, size, sort, sortField, searchQuery]);
+
+    const handleRefresh = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            await Promise.all([
+                refreshDrivers(),
+                refreshProducts(),
+                refreshTransfers(),
+                refreshVehicles(),
+                refreshWarehouses()
+            ]);
+            await Promise.all([
+                fetchWarehouses(),
+                fetchVehicles(),
+                fetchShipments()
+            ]);
+            toast.success('Data refreshed successfully');
+        } catch (err) {
+            console.error('Error refreshing data:', err);
+            toast.error('Failed to refresh data. Please try again.');
+            setError(err as Error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
         if (token) {
@@ -455,6 +482,14 @@ const Shipments = () => {
                         <option value="DESC">Descending</option>
                     </select>
                 </div>
+                <button 
+                    onClick={handleRefresh} 
+                    disabled={isLoading}
+                    className="bg-green-600 text-white rounded p-1 flex items-center gap-2"
+                >
+                    <MdRefresh className="w-4 h-4" />
+                    {isLoading ? 'Refreshing...' : 'Refresh Data'}
+                </button>
                 <button 
                     onClick={fetchShipments} 
                     disabled={isLoading}

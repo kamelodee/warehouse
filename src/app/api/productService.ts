@@ -1,4 +1,5 @@
 // productService.ts - A utility service for product-related API operations
+import axios from 'axios';
 
 export interface Product {
     id?: number;
@@ -26,10 +27,24 @@ interface ProductSearchResponse {
 const API_BASE_URL = 'https://stock.hisense.com.gh/api/v1.0';
 
 /**
+ * Helper function to format date for API requests
+ */
+const formatDate = (date: Date): string => {
+    return date.toISOString().split('T')[0];
+};
+
+/**
+ * Helper function to get access token
+ */
+const getAccessToken = (): string | null => {
+    return localStorage.getItem('accessToken');
+};
+
+/**
  * Get the authentication token from session storage
  */
 const getToken = (): string | null => {
-    return localStorage.getItem('accessToken');
+    return getAccessToken();
 };
 
 /**
@@ -449,7 +464,7 @@ export const createBatchProducts = async (products: Partial<Product>[]): Promise
         console.info(`Successfully created ${data.length} products in batch`);
         
         return data;
-    } catch (error) {
+    } catch (error: unknown) {
         const enhancedError = (error instanceof Error ? 
             { ...error, message: error.message } : 
             error) as Record<string, unknown>;
@@ -505,6 +520,33 @@ export const getProducts = async (): Promise<{items: Product[], total: number}> 
   }
   
   // If we've exhausted all retries, log the error and throw
-  logApiError('GET', '/products', lastError);
+  logApiError('GET', '/products', lastError as Record<string, unknown>);
   throw lastError;
+};
+
+/**
+ * Refresh products data from the backend
+ * @returns Promise with the refresh response
+ */
+export const refreshProducts = async (): Promise<any> => {
+  try {
+    const token = getAccessToken();
+    const response = await axios.post(`${API_BASE_URL}/products/refresh`, {}, {
+      headers: {
+        'accept': '*/*',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token || ''}`
+      }
+    });
+    console.log('Products refreshed successfully:', response.data);
+    return response.data;
+  } catch (error: unknown) {
+    console.error('Error refreshing products:', error);
+    const enhancedError = (error instanceof Error ? 
+      { ...error, message: error.message } : 
+      error) as Record<string, unknown>;
+    
+    logApiError('POST', '/products/refresh', enhancedError);
+    throw enhancedError;
+  }
 };

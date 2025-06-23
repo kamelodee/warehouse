@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useCallback, Suspense, lazy } from 'react';
-import { searchProducts, deleteProduct, Product } from '../../api/productService';
+import { searchProducts, deleteProduct, Product, refreshProducts } from '../../api/productService';
 import dynamic from 'next/dynamic';
 
 // Dynamically import components with loading fallbacks
@@ -39,7 +39,7 @@ const Products = () => {
     const [selectedProductId, setSelectedProductId] = useState<number | null>(null); // Selected product for editing
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [deletingProductIds, setDeletingProductIds] = useState<number[]>([]); // Track products being deleted
-    const [isUploading, setIsUploading] = useState<boolean>(false); // Track if an Excel upload is in progress
+    const [isRefreshing, setIsRefreshing] = useState<boolean>(false); // Track if a refresh is in progress
    
     // State variables for pagination and sorting
     const [page, setPage] = useState<number>(0);
@@ -140,37 +140,34 @@ const Products = () => {
         fetchProducts(); // Refresh the product list after updating a product
     };
 
-    const handleExcelUpload = () => {
-        setIsExcelUploadModalOpen(true);
-    };
+    const handleRefreshProducts = async () => {
+        setIsRefreshing(true);
+        setError(null);
 
-    const handleProductsUploaded = () => {
-        // Refetch products after successful upload
-        fetchProducts();
-        setIsUploading(false);
-    };
-
-    const handleUploadStart = () => {
-        setIsUploading(true);
-    };
-
-    const handleUploadError = () => {
-        setIsUploading(false);
+        try {
+            await refreshProducts();
+            fetchProducts(); // Refresh the product list after successful refresh
+        } catch (error) {
+            console.error('Error refreshing products:', error);
+            setError(error as Error);
+        } finally {
+            setIsRefreshing(false);
+        }
     };
 
     return (
         <div className="p-4">
             <h1 className="text-black font-bold mb-4">Products Management</h1>
             <div className="flex space-x-2 mb-4">
-                <button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 text-white rounded p-2">Add Product</button>
+                <button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md">Add Product</button>
                 <button 
-                    onClick={handleExcelUpload} 
-                    className={`${isUploading 
+                    onClick={handleRefreshProducts} 
+                    className={`${isRefreshing 
                         ? 'bg-gray-400 cursor-not-allowed' 
                         : 'bg-green-500 hover:bg-green-600'} text-white font-semibold py-2 px-4 rounded-md`}
-                    disabled={isUploading}
+                    disabled={isRefreshing}
                 >
-                    {isUploading ? 'Upload in Progress...' : 'Upload'}
+                    {isRefreshing ? 'Refreshing...' : 'Refresh'}
                 </button>
             </div>
             <Suspense fallback={<div>Loading...</div>}>
@@ -185,13 +182,7 @@ const Products = () => {
                     productId={selectedProductId}
                     onProductUpdated={handleProductUpdated}
                 />
-                <ExcelUpload
-                    isOpen={isExcelUploadModalOpen}
-                    onClose={() => setIsExcelUploadModalOpen(false)}
-                    onProductsUploaded={handleProductsUploaded}
-                    onUploadStart={handleUploadStart}
-                    onUploadError={handleUploadError}
-                />
+                {/* Excel upload modal removed and replaced with refresh functionality */}
             </Suspense>
             <div className="flex space-x-4 mb-4">
                 <div>
@@ -263,7 +254,6 @@ const Products = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Barcode</th>
@@ -274,24 +264,7 @@ const Products = () => {
                     <tbody className="bg-white divide-y divide-gray-200">
                         {Array.isArray(products) && products.length > 0 ? (
                             products.map((product, index) => (
-                                <tr key={product.id} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-gray-100' : ''}`}> 
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                        {product.imageUrl ? (
-                                            <img 
-                                                src={product.imageUrl} 
-                                                alt={product.name} 
-                                                className="h-16 w-16 object-cover rounded-md"
-                                                onError={(e) => {
-                                                    // Handle image loading errors
-                                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/64?text=No+Image';
-                                                }}
-                                            />
-                                        ) : (
-                                            <div className="h-16 w-16 bg-gray-200 flex items-center justify-center rounded-md text-gray-400 text-xs">
-                                                No Image
-                                            </div>
-                                        )}
-                                    </td>
+                                <tr key={product.id} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-gray-100' : ''}`}>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.name}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.code}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.barcode}</td>
@@ -299,7 +272,7 @@ const Products = () => {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         <button 
                                             onClick={() => handleEdit(product.id)} 
-                                            className="text-indigo-500 hover:text-indigo-700 mr-2"
+                                            className="text-blue-500 hover:text-blue-700 mr-4"
                                             disabled={deletingProductIds.includes(product.id)}
                                         >
                                             Edit

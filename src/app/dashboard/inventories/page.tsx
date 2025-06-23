@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { MdRefresh, MdUpload } from 'react-icons/md';
 import { withAuth as AuthWrapper } from '@/app/components/withAuth';
+import { refreshDrivers, refreshProducts, refreshTransfers, refreshVehicles, refreshWarehouses } from '@/app/api/warehouseService';
 import InventoryTableComponent from './InventoryTableComponent';
 import { 
   getInventoryItems, 
@@ -102,8 +103,41 @@ const InventoryPage = () => {
     setPage(newPage);
   };
 
-  const handleRefresh = () => {
-    fetchInventoryItems();
+  const handleRefresh = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Refresh all data sources
+      await Promise.all([
+        refreshProducts(),
+        refreshWarehouses(),
+        refreshVehicles(),
+        refreshDrivers(),
+        refreshTransfers()
+      ]);
+      
+      // Refresh inventory items
+      fetchInventoryItems();
+    } catch (error: any) {
+      console.error('Error refreshing data:', error);
+      setError('Failed to refresh data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleRefreshInventory = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Refresh inventory items
+      await fetchInventoryItems();
+    } catch (error: any) {
+      console.error('Error refreshing inventory:', error);
+      setError('Failed to refresh inventory. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleUploadClick = () => {
@@ -136,102 +170,25 @@ const InventoryPage = () => {
     }, 5000);
   };
 
-  const renderFilterSection = () => (
-    <div className="flex space-x-4 mb-4">
-      <div>
-        <label htmlFor="status" className="border rounded p-1 text-black">Status:</label>
-        <select
-          id="status"
-          value={filters.status || ''}
-          onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-          className="border rounded p-1 text-black"
-        >
-          <option value="">All</option>
-          <option value="IN_STOCK">In Stock</option>
-          <option value="LOW_STOCK">Low Stock</option>
-          <option value="OUT_OF_STOCK">Out of Stock</option>
-        </select>
-      </div>
-      <div>
-        <label htmlFor="warehouseId" className="border rounded p-1 text-black">Warehouse:</label>
-        <select
-          id="warehouseId"
-          value={filters.warehouseId || ''}
-          onChange={(e) => setFilters(prev => ({ ...prev, warehouseId: e.target.value }))}
-          className="border rounded p-1 text-black"
-        >
-          <option value="">All Warehouses</option>
-          {/* You might want to populate this dynamically from your warehouses */}
-          <option value="1">Warehouse 1</option>
-          <option value="2">Warehouse 2</option>
-        </select>
-      </div>
-      <div>
-        <label htmlFor="size" className="border rounded p-1 text-black">Page Size:</label>
-        <input
-          type="number"
-          id="size"
-          value={pageSize}
-          onChange={(e) => setPageSize(Number(e.target.value))}
-          min="1"
-          className="border rounded p-1 text-black"
-        />
-      </div>
-      <div>
-        <label htmlFor="sortField" className="border rounded p-1 text-black">Sort By:</label>
-        <select
-          id="sortField"
-          value={sortField}
-          onChange={(e) => setSortField(e.target.value)}
-          className="border rounded p-1 text-black"
-        >
-          <option value="serialNumber">Serial Number</option>
-          <option value="productName">Product Name</option>
-          <option value="warehouseName">Warehouse</option>
-        </select>
-      </div>
-      <div>
-        <label htmlFor="sort" className="border rounded p-1 text-black">Order:</label>
-        <select
-          id="sort"
-          value={sort}
-          onChange={(e) => setSort(e.target.value)}
-          className="border rounded p-1 text-black"
-        >
-          <option value="ASC">Ascending</option>
-          <option value="DESC">Descending</option>
-        </select>
-      </div>
-      <button 
-        onClick={fetchInventoryItems} 
-        disabled={loading}
-        className="bg-indigo-600 text-white rounded p-1"
-      >
-        {loading ? 'Loading...' : 'Apply Filters'}
-      </button>
-    </div>
-  );
+  // Filter section removed as requested
 
   return (
     <div className="inventory-page">
-      <h1 className="page-title">Inventory Management</h1>
-      <div className="page-header">
-        <div className="header-actions-left">
+      <h1 className="text-2xl font-semibold text-gray-900 mb-4">Inventory Management</h1>
+      <div className="flex space-x-2 mb-4">
         <button 
-            onClick={handleCreateInventoryClick}
-            className="bg-indigo-600 text-white rounded p-2"
-          >
-            Create Inventory
-          </button>
-          <button 
-            onClick={handleUploadClick}
-            className="bg-green-600 text-white rounded p-2"
-          >
-            Upload
-          </button>
-         
-        </div>
-        <h1 ></h1>
+          onClick={handleCreateInventoryClick}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md"
+        >
+          Create Inventory
+        </button>
+        <button 
+          onClick={handleRefreshInventory}
+          disabled={loading}
+          className={`${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'} text-white font-semibold py-2 px-4 rounded-md`}
+        >
+          {loading ? 'Refreshing...' : 'Refresh'}
+        </button>
       </div>
       
       {error && (
@@ -245,8 +202,6 @@ const InventoryPage = () => {
           <p>CSV file processed successfully!</p>
         </div>
       )}
-      
-      {renderFilterSection()}
       
       <InventoryTableComponent 
         items={inventoryItems}

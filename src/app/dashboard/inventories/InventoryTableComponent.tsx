@@ -145,27 +145,23 @@ const InventoryTableComponent: React.FC<InventoryTableProps> = ({
         </tbody>
       </table>
       
-      <div className="pagination-controls">
+      <div className="pagination mb-4 text-black">
         <button 
-          className="pagination-button" 
           onClick={handlePrevPage} 
           disabled={page <= 0}
+          className="bg-gray-300 rounded p-2 mr-2"
         >
-          <MdNavigateBefore size={20} />
-          <span>Previous</span>
+          Previous
         </button>
         
-        <span className="pagination-info">
-          Page {page + 1} of {Math.max(1, totalPages)}
-        </span>
+        <span className="mx-2 text-black">Page {page + 1} of {Math.max(1, totalPages)}</span>
         
         <button 
-          className="pagination-button" 
           onClick={handleNextPage} 
           disabled={page >= totalPages - 1}
+          className="bg-gray-300 rounded p-2 ml-2"
         >
-          <span>Next</span>
-          <MdNavigateNext size={20} />
+          Next
         </button>
       </div>
       

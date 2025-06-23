@@ -82,6 +82,25 @@ export const getTransferById = async (transferId: number): Promise<Transfer> => 
   }
 };
 
+export const refreshTransfers = async (): Promise<any> => {
+  try {
+    const token = getAccessToken();
+    const response = await axios.post(`${BASE_URL}/refresh`, {}, {
+      headers: {
+        'accept': '*/*',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token || ''}`
+      }
+    });
+    console.log(response.data);
+    return response.data;
+
+  } catch (error: any) {
+    console.error('Error refreshing transfers:', error);
+    throw error;
+  }
+};
+
 export const uploadTransfers = async (file: File): Promise<any> => {
   try {
     const token = getAccessToken();

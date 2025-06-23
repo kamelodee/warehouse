@@ -1,4 +1,5 @@
 // vehicleService.ts - A utility service for vehicle-related API operations
+import axios from 'axios';
 
 export interface Vehicle {
     id?: number;
@@ -223,28 +224,52 @@ export const deleteVehicle = async (id: number): Promise<void> => {
  */
 export const uploadVehicles = async (file: File): Promise<any> => {
     const token = getToken();
-    const endpoint = '/vehicles/upload';
-    
     if (!token) {
-        throw new Error('Authentication token is missing');
+        throw new Error('Authentication token not found');
     }
-    
+
+    const formData = new FormData();
+    formData.append('file', file);
+
     try {
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        const response = await fetch(`${API_BASE_URL}/vehicles/upload`, {
             method: 'POST',
             headers: {
-                'accept': '*/*',
                 'Authorization': `Bearer ${token}`
+                // Note: Content-Type is automatically set by the browser when using FormData
             },
             body: formData
         });
-        
-        return handleResponse<any>(response, 'POST', endpoint);
+
+        return handleResponse(response, 'POST', '/vehicles/upload');
     } catch (error) {
-        logApiError('POST', endpoint, error, { file: file.name });
+        console.error('Error uploading vehicles:', error);
+        throw error;
+    }
+};
+
+/**
+ * Refresh vehicles data from the backend
+ * @returns Promise with the refresh response
+ */
+export const refreshVehicles = async (): Promise<any> => {
+    try {
+        const token = getToken();
+        if (!token) {
+            throw new Error('Authentication token not found');
+        }
+        
+        const response = await axios.post(`${API_BASE_URL}/vehicles/refresh`, {}, {
+            headers: {
+                'accept': '*/*',
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        console.log('Vehicles refreshed successfully:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('Error refreshing vehicles:', error);
         throw error;
     }
 };
