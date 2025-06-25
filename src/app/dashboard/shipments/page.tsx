@@ -456,22 +456,9 @@ const Shipments = () => {
                         className="border rounded p-1 text-black"
                     />
                 </div>
+               
                 <div>
-                    <label htmlFor="sortField" className="border rounded p-1 text-black">Sort By:</label>
-                    <select
-                        id="sortField"
-                        value={sortField}
-                        onChange={(e) => setSortField(e.target.value)}
-                        className="border rounded p-1 text-black"
-                    >
-                        <option value="id">ID</option>
-                        <option value="referenceNumber">Reference Number</option>
-                        <option value="type">Type</option>
-                        <option value="status">Status</option>
-                    </select>
-                </div>
-                <div>
-                    <label htmlFor="sort" className="border rounded p-1 text-black">Order:</label>
+                    <label htmlFor="sort" className="border rounded p-1.5 text-black">Order:</label>
                     <select
                         id="sort"
                         value={sort}
@@ -497,13 +484,7 @@ const Shipments = () => {
                 >
                     {isLoading ? 'Loading...' : 'Apply Filters'}
                 </button>
-                <input 
-                    type="text" 
-                    value={searchQuery} 
-                    onChange={(e) => setSearchQuery(e.target.value)} 
-                    placeholder="Search by reference number" 
-                    className="border rounded p-1 text-black"
-                />
+                
             </div>
             <div className="pagination mb-4 text-black">
                 <button 

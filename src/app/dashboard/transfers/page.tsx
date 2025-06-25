@@ -167,14 +167,38 @@ const Transfers = () => {
         warehouses={warehouses} 
         onApplyFilters={handleApplyFilters} 
       />
+      
+      <div className="pagination mb-4 text-black">
+        <button 
+          onClick={() => setPage(prev => Math.max(prev - 1, 0))} 
+          disabled={page === 0 || isLoading} 
+          className="bg-gray-300 rounded p-2 mr-2"
+        >
+          Previous
+        </button>
+        <span className="mx-2 text-black">Page {page + 1} of {totalPages}</span>
+        <button 
+          onClick={() => setPage(prev => Math.min(prev + 1, totalPages - 1))} 
+          disabled={page + 1 === totalPages || isLoading} 
+          className="bg-gray-300 rounded p-2 ml-2"
+        >
+          Next
+        </button>
+      </div>
 
-      <TransferTable 
-        transfers={transfers} 
-        totalTransfers={totalTransfers}
-        totalPages={totalPages}
-        currentPage={page}
-        onRefresh={fetchTransfers}
-      />
+      {isLoading ? (
+        <div className="flex justify-center items-center h-40">
+          <p className="text-black">Loading transfers...</p>
+        </div>
+      ) : (
+        <TransferTable 
+          transfers={transfers} 
+          totalTransfers={totalTransfers}
+          totalPages={totalPages}
+          currentPage={page}
+          onRefresh={fetchTransfers}
+        />
+      )}
 
       {isCreateModalOpen && (
         <CreateTransferModal 

@@ -1,19 +1,26 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { MdRefresh, MdUpload } from 'react-icons/md';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { MdRefresh } from 'react-icons/md';
 import { withAuth as AuthWrapper } from '@/app/components/withAuth';
 import { refreshDrivers, refreshProducts, refreshTransfers, refreshVehicles, refreshWarehouses } from '@/app/api/warehouseService';
 import InventoryTableComponent from './InventoryTableComponent';
 import { 
   getInventoryItems, 
-  uploadInventoryCSV, 
-  processInventoryCSV,
-  InventoryItem,
-  InventorySearchResponse
+  InventoryItem
 } from '@/app/api/inventoryService';
-import CSVUploadModal from './CSVUploadModal';
-import { CreateInventoryModal } from './components/CreateInventoryModal';
+import dynamic from 'next/dynamic';
+
+// Dynamically import components with loading fallbacks
+const CSVUploadModal = dynamic(() => import('./CSVUploadModal').then(mod => ({ default: mod.default })), {
+  loading: () => <div className="p-4 border rounded shadow-sm">Loading upload form...</div>,
+  ssr: false
+});
+
+const CreateInventoryModal = dynamic(() => import('./components/CreateInventoryModal').then(mod => ({ default: mod.CreateInventoryModal })), {
+  loading: () => <div className="p-4 border rounded shadow-sm">Loading create form...</div>,
+  ssr: false
+});
 
 interface PageFilters {
   status?: string;
@@ -31,24 +38,20 @@ const InventoryPage = () => {
   const [page, setPage] = useState<number>(0); // API uses 0-based indexing
   const [totalPages, setTotalPages] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
-  const [uploadSuccess, setUploadSuccess] = useState<boolean>(false);
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [sortField, setSortField] = useState<string>('serialNumber');
   const [sort, setSort] = useState<string>('ASC');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   // Fetch initial data
   useEffect(() => {
-    fetchInventoryItems();
-    
-    // Clean up any timeouts on unmount
-    return () => {
-      if (successTimeoutRef.current) {
-        clearTimeout(successTimeoutRef.current);
-      }
-    };
+    const storedToken = localStorage.getItem('accessToken');
+    if (!storedToken) {
+      window.location.href = '/login';
+    } else {
+      fetchInventoryItems();
+    }
   }, []);
 
   // Fetch data when filters or pagination changes
@@ -56,14 +59,12 @@ const InventoryPage = () => {
     fetchInventoryItems();
   }, [filters, page, pageSize, sortField, sort]);
 
-  // Debounced fetch function to prevent excessive API calls
+  // Fetch function to get inventory items
   const fetchInventoryItems = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      console.log('Fetching inventory items with filters:', filters);
-      
       // Convert page filters to API filters
       const apiFilters: {
         pageNumber: number;
@@ -79,8 +80,6 @@ const InventoryPage = () => {
       };
       
       const response = await getInventoryItems(apiFilters);
-      
-      console.log('Inventory response:', response);
       
       if (response && response.content) {
         setInventoryItems(response.content);
@@ -99,12 +98,8 @@ const InventoryPage = () => {
     }
   };
 
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleRefresh = async () => {
-    setLoading(true);
+  const handleRefreshInventory = async () => {
+    setIsRefreshing(true);
     setError(null);
     try {
       // Refresh all data sources
@@ -117,35 +112,13 @@ const InventoryPage = () => {
       ]);
       
       // Refresh inventory items
-      fetchInventoryItems();
+      await fetchInventoryItems();
     } catch (error: any) {
       console.error('Error refreshing data:', error);
       setError('Failed to refresh data. Please try again.');
     } finally {
-      setLoading(false);
+      setIsRefreshing(false);
     }
-  };
-  
-  const handleRefreshInventory = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Refresh inventory items
-      await fetchInventoryItems();
-    } catch (error: any) {
-      console.error('Error refreshing inventory:', error);
-      setError('Failed to refresh inventory. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUploadClick = () => {
-    setShowUploadModal(true);
-  };
-
-  const handleCloseUploadModal = () => {
-    setShowUploadModal(false);
   };
 
   const handleCreateInventoryClick = () => {
@@ -154,165 +127,140 @@ const InventoryPage = () => {
 
   const handleCloseCreateModal = () => {
     setShowCreateModal(false);
+    fetchInventoryItems(); // Refresh after closing modal
   };
 
-  const handleUploadSuccess = () => {
-    setUploadSuccess(true);
-    fetchInventoryItems(); // Refresh the inventory list
-    
-    // Clear success message after 5 seconds
-    if (successTimeoutRef.current) {
-      clearTimeout(successTimeoutRef.current);
-    }
-    
-    successTimeoutRef.current = setTimeout(() => {
-      setUploadSuccess(false);
-    }, 5000);
+  const handleUploadClick = () => {
+    setShowUploadModal(true);
   };
 
-  // Filter section removed as requested
+  const handleCloseUploadModal = () => {
+    setShowUploadModal(false);
+    fetchInventoryItems(); // Refresh after closing modal
+  };
 
   return (
-    <div className="inventory-page">
-      <h1 className="text-2xl font-semibold text-gray-900 mb-4">Inventory Management</h1>
+    <div className="p-4">
+      <h1 className="text-black font-bold mb-4">Inventory Management</h1>
       <div className="flex space-x-2 mb-4">
         <button 
-          onClick={handleCreateInventoryClick}
+          onClick={handleCreateInventoryClick} 
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md"
         >
-          Create Inventory
+          Add Inventory
         </button>
         <button 
-          onClick={handleRefreshInventory}
-          disabled={loading}
-          className={`${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'} text-white font-semibold py-2 px-4 rounded-md`}
+          onClick={handleUploadClick} 
+          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md"
         >
-          {loading ? 'Refreshing...' : 'Refresh'}
+          Upload CSV
+        </button>
+        <button 
+          onClick={handleRefreshInventory} 
+          className={`${isRefreshing 
+            ? 'bg-gray-400 cursor-not-allowed' 
+            : 'bg-green-500 hover:bg-green-600'} text-white font-semibold py-2 px-4 rounded-md`}
+          disabled={isRefreshing}
+        >
+          {isRefreshing ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
       
-      {error && (
-        <div className="error-alert">
-          <p>{error}</p>
+      <Suspense fallback={<div>Loading...</div>}>
+        {showCreateModal && (
+          <CreateInventoryModal 
+            isOpen={showCreateModal}
+            onClose={handleCloseCreateModal}
+          />
+        )}
+        {showUploadModal && (
+          <CSVUploadModal 
+            isOpen={showUploadModal}
+            onClose={handleCloseUploadModal}
+            onSuccess={fetchInventoryItems}
+          />
+        )}
+      </Suspense>
+      
+      <div className="flex space-x-4 mb-4">
+        <div>
+          <label htmlFor="size" className="border rounded p-1 text-black">Size:</label>
+          <input
+            type="number"
+            id="size"
+            value={pageSize}
+            onChange={(e) => setPageSize(Number(e.target.value))}
+            min="1"
+            className="border rounded p-1 text-black"
+          />
         </div>
-      )}
-      
-      {uploadSuccess && (
-        <div className="success-alert">
-          <p>CSV file processed successfully!</p>
+        <div>
+          <label htmlFor="sortField" className="border rounded p-1 text-black">Sort By:</label>
+          <select
+            id="sortField"
+            value={sortField}
+            onChange={(e) => setSortField(e.target.value)}
+            className="border rounded p-1 text-black"
+          >
+            <option value="serialNumber">Serial Number</option>
+            <option value="productName">Product Name</option>
+            <option value="quantity">Quantity</option>
+            <option value="warehouseName">Warehouse</option>
+          </select>
         </div>
+        <div>
+          <label htmlFor="sort" className="border rounded p-1 text-black">Order:</label>
+          <select
+            id="sort"
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="border rounded p-1 text-black"
+          >
+            <option value="ASC">Ascending</option>
+            <option value="DESC">Descending</option>
+          </select>
+        </div>
+        <button 
+          onClick={fetchInventoryItems} 
+          disabled={loading}
+          className="bg-indigo-600 text-white rounded p-1"
+        >
+          {loading ? 'Loading...' : 'Apply Filters'}
+        </button>
+      </div>
+      
+      <div className="pagination mb-4 text-black">
+        <button 
+          onClick={() => setPage(prev => Math.max(prev - 1, 0))} 
+          disabled={page === 0 || loading} 
+          className="bg-gray-300 rounded p-2 mr-2"
+        >
+          Previous
+        </button>
+        <span className="mx-2 text-black">Page {page + 1} of {totalPages}</span>
+        <button 
+          onClick={() => setPage(prev => Math.min(prev + 1, totalPages - 1))} 
+          disabled={page + 1 === totalPages || loading} 
+          className="bg-gray-300 rounded p-2 ml-2"
+        >
+          Next
+        </button>
+      </div>
+      
+      {loading ? (
+        <div className="flex justify-center items-center h-40">
+          <p className="text-black">Loading inventory items...</p>
+        </div>
+      ) : (
+        <InventoryTableComponent 
+          items={inventoryItems}
+          loading={loading}
+          error={error}
+          page={page}
+          totalPages={totalPages}
+          onPageChange={(newPage) => setPage(newPage)}
+        />
       )}
-      
-      <InventoryTableComponent 
-        items={inventoryItems}
-        loading={loading}
-        error={error}
-        page={page}
-        totalPages={totalPages}
-        onPageChange={handlePageChange}
-      />
-      
-      <CSVUploadModal 
-        isOpen={showUploadModal}
-        onClose={handleCloseUploadModal}
-        onSuccess={handleUploadSuccess}
-      />
-      
-      <CreateInventoryModal 
-        isOpen={showCreateModal}
-        onClose={handleCloseCreateModal}
-      />
-      
-      <style jsx>{`
-        .inventory-page {
-          padding: 1.5rem;
-        }
-        
-        .page-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1.5rem;
-        }
-        
-        .header-actions-left {
-          display: flex;
-          gap: 1rem;
-        }
-        
-        .page-title {
-          font-size: 1.5rem;
-          font-weight: 600;
-          color: #333;
-        }
-        
-        .header-actions {
-          display: flex;
-          gap: 1rem;
-        }
-        
-        .refresh-button {
-          display: flex;
-          align-items: center;
-          padding: 0.5rem 1rem;
-          background-color: white;
-          border: 1px solid #ddd;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 0.875rem;
-        }
-        
-        .refresh-button:hover {
-          background-color: #f5f5f5;
-        }
-        
-        .refresh-button:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-        
-        .upload-button {
-          padding: 0.5rem 1rem;
-          background-color: #4f46e5;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          cursor: pointer;
-          font-size: 0.875rem;
-          transition: background-color 0.2s;
-        }
-        
-        .upload-button:hover {
-          background-color: #4f46e5;
-        }
-        
-        .icon {
-          margin-right: 0.5rem;
-        }
-        
-        .error-alert {
-          padding: 0.75rem 1rem;
-          background-color: #ffebee;
-          border-radius: 4px;
-          margin-bottom: 1rem;
-          color: #d32f2f;
-        }
-        
-        .success-alert {
-          margin-bottom: 1rem;
-          padding: 0.75rem 1rem;
-          background-color: #e8f5e9;
-          border-left: 4px solid #4caf50;
-          border-radius: 4px;
-          animation: fadeOut 5s forwards;
-        }
-        
-        @keyframes fadeOut {
-          0% { opacity: 1; }
-          80% { opacity: 1; }
-          100% { opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 };

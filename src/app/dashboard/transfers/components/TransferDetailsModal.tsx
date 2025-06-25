@@ -15,125 +15,133 @@ interface TransferDetailsModalProps {
 }
 
 const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({ transfer, onClose }) => {
-  const renderStockItem = (stock: Transfer['stocks'][0]) => (
+  const renderStockItem = (stock: Transfer['stocks'][0], index: number) => (
     <tr 
       key={`${stock.id.transferId}-${stock.id.productId}`} 
-      className="border-b hover:bg-gradient-to-r hover:from-indigo-50 hover:to-blue-50 transition-all duration-200 text-gray-800"
+      className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-gray-100' : ''}`}
     >
-      <td className="py-3 px-4 flex items-center">
-        <FaBoxes className="mr-3 text-indigo-500" />
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 flex items-center">
+        <FaBoxes className="mr-3 text-blue-500" />
         {stock.product.name}
       </td>
-      <td className="py-3 px-4">{stock.product.code}</td>
-      <td className="py-3 px-4 font-semibold text-green-600">{stock.quantity}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{stock.product.code}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">{stock.quantity}</td>
     </tr>
   );
 
   const getStatusColor = () => {
     switch (transfer.type.toLowerCase()) {
       case 'completed':
-        return 'bg-gradient-to-r from-green-200 to-green-300 text-green-900';
+        return 'bg-green-100 text-green-800';
       case 'pending':
-        return 'bg-gradient-to-r from-yellow-200 to-yellow-300 text-yellow-900';
+        return 'bg-yellow-100 text-yellow-800';
       default:
-        return 'bg-gradient-to-r from-gray-200 to-gray-300 text-gray-900';
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl border border-gray-200 overflow-hidden">
-        <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-indigo-100 to-blue-100">
+    <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
           <div className="flex items-center">
-            <FaTruck className="mr-4 text-3xl text-indigo-600" />
-            <h2 className="text-2xl font-bold text-gray-900">Transfer Details</h2>
+            <FaTruck className="mr-3 text-blue-600" />
+            <h2 className="text-2xl font-bold">Transfer Details</h2>
           </div>
           <button 
             onClick={onClose} 
-            className="text-gray-600 hover:text-gray-900 hover:bg-red-100 p-2 rounded-full transition-all duration-200"
+            className="text-gray-500 hover:text-gray-700"
           >
-            <FaTimes className="text-2xl" />
+            <FaTimes />
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto flex-grow">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-gradient-to-br from-white to-gray-50 rounded-lg p-5 border border-gray-100 shadow-sm">
-              <div className="flex items-center mb-4">
-                <FaClipboardList className="mr-3 text-indigo-500 text-xl" />
-                <h3 className="text-lg font-semibold text-gray-900">Transfer Information</h3>
+        <div className="mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="border rounded-md p-4">
+              <div className="flex items-center mb-3">
+                <FaClipboardList className="mr-2 text-blue-500" />
+                <h3 className="text-lg font-medium text-gray-900">Transfer Information</h3>
               </div>
-              <div className="space-y-3">
-                <p className="flex items-center">
+              <div className="space-y-2">
+                <p className="flex items-center text-sm">
                   <strong className="text-gray-700 mr-2 w-24">Number:</strong> 
                   {transfer.number}
                 </p>
-                <p className="flex items-center">
+                <p className="flex items-center text-sm">
                   <strong className="text-gray-700 mr-2 w-24">Type:</strong> 
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor()}`}>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor()}`}>
                     {transfer.type}
                   </span>
                 </p>
-                <p className="flex items-center">
-                  <FaCalendarAlt className="mr-2 text-indigo-500" />
+                <p className="flex items-center text-sm">
+                  <FaCalendarAlt className="mr-2 text-blue-500" />
                   <strong className="text-gray-700 mr-2">Date:</strong> 
                   {transfer.date}
                 </p>
-                <p className="flex items-center">
+                <p className="flex items-center text-sm">
                   <strong className="text-gray-700 mr-2 w-24">Description:</strong> 
                   {transfer.description || 'No description provided'}
                 </p>
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-white to-gray-50 rounded-lg p-5 border border-gray-100 shadow-sm">
-              <div className="flex items-center mb-4">
-                <FaWarehouse className="mr-3 text-green-500 text-xl" />
-                <h3 className="text-lg font-semibold text-gray-900">Warehouse Details</h3>
+            <div className="border rounded-md p-4">
+              <div className="flex items-center mb-3">
+                <FaWarehouse className="mr-2 text-blue-500" />
+                <h3 className="text-lg font-medium text-gray-900">Warehouse Details</h3>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <strong className="text-gray-700 block mb-1">Source Warehouse</strong>
-                  <p className="font-semibold text-gray-900">{transfer.sourceWarehouse?.name || 'Unknown'}</p>
+                  <strong className="text-gray-700 block mb-1 text-sm">Source Warehouse</strong>
+                  <p className="font-medium text-gray-900">{transfer.sourceWarehouse?.name || 'Unknown'}</p>
                   <p className="text-sm text-gray-600">{transfer.sourceWarehouse?.location || 'No location details'}</p>
                 </div>
                 <div>
-                  <strong className="text-gray-700 block mb-1">Destination Warehouse</strong>
-                  <p className="font-semibold text-gray-900">{transfer.destinationWarehouse?.name || 'Unknown'}</p>
+                  <strong className="text-gray-700 block mb-1 text-sm">Destination Warehouse</strong>
+                  <p className="font-medium text-gray-900">{transfer.destinationWarehouse?.name || 'Unknown'}</p>
                   <p className="text-sm text-gray-600">{transfer.destinationWarehouse?.location || 'No location details'}</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-8 bg-gradient-to-br from-white to-gray-50 rounded-lg p-5 border border-gray-100 shadow-sm">
-            <div className="flex items-center mb-4">
-              <FaBoxes className="mr-3 text-blue-500 text-xl" />
-              <h3 className="text-lg font-semibold text-gray-900">Stock Items</h3>
+          <div className="border rounded-md p-4">
+            <div className="flex items-center mb-3">
+              <FaBoxes className="mr-2 text-blue-500" />
+              <h3 className="text-lg font-medium text-gray-900">Stock Items</h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse rounded-lg">
-                <thead>
-                  <tr className="bg-gradient-to-r from-indigo-100 to-blue-100">
-                    <th className="py-3 px-4 font-semibold text-gray-800">Product Name</th>
-                    <th className="py-3 px-4 font-semibold text-gray-800">Product Code</th>
-                    <th className="py-3 px-4 font-semibold text-gray-800">Quantity</th>
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Code</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {transfer.stocks.map(renderStockItem)}
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {transfer.stocks.length > 0 ? (
+                    transfer.stocks.map(renderStockItem)
+                  ) : (
+                    <tr>
+                      <td colSpan={3} className="px-6 py-4 text-center text-sm text-gray-500">
+                        No stock items found
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
 
-        <div className="p-6 border-t border-gray-200 flex justify-end bg-gradient-to-r from-indigo-50 to-blue-50">
+        <div className="flex justify-end mt-4">
           <button 
             onClick={onClose} 
-            className="px-6 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-all duration-200 flex items-center"
+            className="bg-gray-300 text-gray-700 rounded-md px-4 py-2 mr-2 hover:bg-gray-400"
           >
-            <FaTimes className="mr-2" /> Close
+            Close
           </button>
         </div>
       </div>

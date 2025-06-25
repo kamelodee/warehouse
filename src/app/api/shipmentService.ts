@@ -122,15 +122,17 @@ const handleResponse = async <T>(response: Response, method: string, endpoint: s
         
         try {
             // Try to parse error response as JSON
-            errorData = await response.json();
-            errorMessage = errorData.message || `Error ${response.status}: ${response.statusText}`;
-        } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
-            // If not JSON, get text
-            try {
-                errorMessage = await response.text();
-            } catch (_textError) { // eslint-disable-line @typescript-eslint/no-unused-vars
-                errorMessage = `Error ${response.status}: ${response.statusText}`;
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                errorData = await response.json();
+                errorMessage = errorData.message || `Error ${response.status}: ${response.statusText}`;
+            } else {
+                // If not JSON, get text
+                errorMessage = await response.text() || `Error ${response.status}: ${response.statusText}`;
             }
+        } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
+            // If parsing fails, use status text
+            errorMessage = `Error ${response.status}: ${response.statusText}`;
         }
         
         const error = new Error(errorMessage);
@@ -142,15 +144,39 @@ const handleResponse = async <T>(response: Response, method: string, endpoint: s
         throw enhancedError;
     }
     
+    // Check if response is empty
+    const contentLength = response.headers.get('content-length');
+    if (contentLength === '0') {
+        // Return empty object for empty responses
+        return {} as T;
+    }
+    
+    // Check content type
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+        console.warn(`Unexpected content type: ${contentType}. Expected application/json.`);
+        // Try to parse anyway but log warning
+    }
+    
     try {
-        return await response.json() as T;
+        const text = await response.text();
+        if (!text) {
+            console.warn('Empty response body received');
+            return {} as T;
+        }
+        return JSON.parse(text) as T;
     } catch (error) {
         const enhancedError = (error instanceof Error ? 
             { ...error, message: error.message } : 
             error) as Record<string, unknown>;
         
-        logApiError(method, endpoint, enhancedError, { message: 'Failed to parse JSON response' });
-        throw new Error('Failed to parse server response');
+        logApiError(method, endpoint, enhancedError, { 
+            message: 'Failed to parse JSON response',
+            responseStatus: response.status,
+            responseStatusText: response.statusText,
+            contentType: response.headers.get('content-type')
+        });
+        throw new Error(`Failed to parse server response: ${error instanceof Error ? error.message : 'Unknown parsing error'}`);
     }
 };
 
@@ -164,15 +190,17 @@ const handleResponseWithPossibleNoContent = async <T>(response: Response, method
         
         try {
             // Try to parse error response as JSON
-            errorData = await response.json();
-            errorMessage = errorData.message || `Error ${response.status}: ${response.statusText}`;
-        } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
-            // If not JSON, get text
-            try {
-                errorMessage = await response.text();
-            } catch (_textError) { // eslint-disable-line @typescript-eslint/no-unused-vars
-                errorMessage = `Error ${response.status}: ${response.statusText}`;
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                errorData = await response.json();
+                errorMessage = errorData.message || `Error ${response.status}: ${response.statusText}`;
+            } else {
+                // If not JSON, get text
+                errorMessage = await response.text() || `Error ${response.status}: ${response.statusText}`;
             }
+        } catch (_e) { // eslint-disable-line @typescript-eslint/no-unused-vars
+            // If parsing fails, use status text
+            errorMessage = `Error ${response.status}: ${response.statusText}`;
         }
         
         const error = new Error(errorMessage);
@@ -189,9 +217,20 @@ const handleResponseWithPossibleNoContent = async <T>(response: Response, method
         return null;
     }
     
+    // Check if response is empty
+    const contentLength = response.headers.get('content-length');
+    if (contentLength === '0') {
+        return null;
+    }
+    
     // For responses with content, try to parse JSON
     try {
-        return await response.json() as T;
+        const text = await response.text();
+        if (!text) {
+            // Empty response body
+            return method === 'DELETE' ? null : {} as T;
+        }
+        return JSON.parse(text) as T;
     } catch (error) {
         const enhancedError = (error instanceof Error ? 
             { ...error, message: error.message } : 
@@ -202,8 +241,13 @@ const handleResponseWithPossibleNoContent = async <T>(response: Response, method
             return null;
         }
         
-        logApiError(method, endpoint, enhancedError, { message: 'Failed to parse JSON response' });
-        throw new Error('Failed to parse server response');
+        logApiError(method, endpoint, enhancedError, { 
+            message: 'Failed to parse JSON response',
+            responseStatus: response.status,
+            responseStatusText: response.statusText,
+            contentType: response.headers.get('content-type')
+        });
+        throw new Error(`Failed to parse server response: ${error instanceof Error ? error.message : 'Unknown parsing error'}`);
     }
 };
 

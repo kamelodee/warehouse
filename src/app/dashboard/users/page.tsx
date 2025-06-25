@@ -152,8 +152,8 @@ export default function Users() {
   };
 
   // Define fetchUsers and fetchWarehouses functions before using them in useEffect
-  const fetchUsers = useCallback(async (page = 0) => {
-    console.log(`Starting user fetching process for page ${page}`);
+  const fetchUsers = useCallback(async (page = 0, size = pagination.size) => {
+    console.log(`Starting user fetching process for page ${page}, size ${size}`);
     setIsLoadingUsers(true);
     setUsersFetchError(null);
 
@@ -167,7 +167,7 @@ export default function Users() {
       const payload = {
         totalPages: 0,
         totalElements: 0,
-        size: 10,
+        size: size,
         number: page,
         numberOfElements: 0,
         first: page === 0,
@@ -382,50 +382,25 @@ export default function Users() {
     }
   }, []);
 
+  // Function to handle page change
+  // Load data when component mounts
   useEffect(() => {
     const storedToken = localStorage.getItem('accessToken');
-    setToken(storedToken);
-
-    // Fetch users when component mounts
-    fetchUsers();
-    // Fetch warehouses when component mounts
-    fetchWarehouses();
+    if (storedToken) {
+      setToken(storedToken);
+      fetchUsers();
+      fetchWarehouses();
+    }
   }, [fetchUsers, fetchWarehouses]);
 
-  // Function to handle page change
-  const handlePageChange = (page: number) => {
-    console.log(`Changing to page ${page}`);
-    if (page < 0 || page >= pagination.totalPages) {
-      console.warn(`Invalid page number: ${page}`);
+  const handlePageChange = (pageNum: number) => {
+    console.log(`Changing to page ${pageNum}`);
+    if (pageNum < 0 || pageNum >= pagination.totalPages) {
+      console.warn(`Invalid page number: ${pageNum}`);
       return;
     }
 
-    fetchUsers(page);
-  };
-
-  const validateForm = () => {
-    // Remove password validation
-    if (!newUser.firstName) return 'First Name is required';
-    if (!newUser.lastName) return 'Last Name is required';
-    if (!newUser.email) return 'Email is required';
-    if (!newUser.phoneNumber) return 'Phone Number is required';
-    if (!newUser.role) return 'Role is required';
-    if (!newUser.warehouseId) return 'Warehouse is required';
-
-    // Optional password validation removed
-    return null;
-  };
-
-  const resetForm = () => {
-    setNewUser({
-      firstName: '',
-      lastName: '',
-      email: '',
-      phoneNumber: '',
-      role: 'USER',
-      warehouseId: warehouses.length > 0 ? warehouses[0].id : 0
-    });
-    setApiError(null);
+    fetchUsers(pageNum);
   };
 
   // Function to handle user deletion
@@ -613,7 +588,7 @@ export default function Users() {
       return;
     }
 
-    setIsLoading(true);
+    setIsLoadingEditUser(true);
     setEditApiError(null);
 
     try {
@@ -639,12 +614,7 @@ export default function Users() {
         role: editUser.role,
         warehouseId: editUser.warehouseId
       };
-
-      console.log('Sending user update payload:', {
-        ...payload,
-        warehouseDetails: warehouses.find(w => w.id === payload.warehouseId)
-      });
-
+      
       // Make API call to update the user
       const response = await fetch(`https://stock.hisense.com.gh/api/v1.0/users/${editUser.id}`, {
         method: 'PUT',
@@ -692,7 +662,7 @@ export default function Users() {
       // Provide a user-friendly error message
       setEditApiError('An unexpected error occurred. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsLoadingEditUser(false);
       console.log('User update process completed');
     }
   };
@@ -724,12 +694,41 @@ export default function Users() {
     setEditApiError(null);
   };
 
+
+
+
+
   // Function to open edit form
   const openEditForm = (userId: number) => {
     console.log('Opening edit form for user ID:', userId);
     setUserToEdit(userId);
     fetchUserForEdit(userId);
   };
+
+  // Function to validate form
+  const validateForm = () => {
+    if (!newUser.firstName) return 'First Name is required';
+    if (!newUser.lastName) return 'Last Name is required';
+    if (!newUser.email) return 'Email is required';
+    if (!newUser.phoneNumber) return 'Phone Number is required';
+    if (!newUser.role) return 'Role is required';
+    if (!newUser.warehouseId) return 'Warehouse is required';
+    return null;
+  };
+
+  // Function to reset form
+  const resetForm = () => {
+    setNewUser({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phoneNumber: '',
+      role: 'USER',
+      warehouseId: warehouses.length > 0 ? warehouses[0].id : 0
+    });
+    setApiError(null);
+  };
+
 
   const handleAddUser = async () => {
     console.log('Starting user creation process');
@@ -774,7 +773,7 @@ export default function Users() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          'Authorization': `Bearer ${localStorage.getItem('accessToken') || ''}`
         },
         body: JSON.stringify(payload)
       });
@@ -821,90 +820,87 @@ export default function Users() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Users Management</h1>
-          <p className="mt-1 text-sm text-gray-600">Manage user access and permissions</p>
-        </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+    <div className="p-4">
+      <h1 className="text-black font-bold mb-4">Users Management</h1>
+      <div className="flex space-x-2 mb-4">
+        <button 
+          onClick={() => setShowAddModal(true)} 
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md"
         >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
           Add User
+        </button>
+        <button 
+          onClick={() => fetchUsers(pagination.number)}
+          className={`${isLoadingUsers 
+            ? 'bg-gray-400 cursor-not-allowed' 
+            : 'bg-green-500 hover:bg-green-600'} text-white font-semibold py-2 px-4 rounded-md`}
+          disabled={isLoadingUsers}
+        >
+          {isLoadingUsers ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
 
       {usersFetchError && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700">{usersFetchError}</p>
-            </div>
-            <div className="ml-auto pl-3">
-              <div className="-mx-1.5 -my-1.5">
-                <button
-                  onClick={() => fetchUsers()}
-                  className="inline-flex bg-red-50 rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                  <span className="sr-only">Retry</span>
-                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
+        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+          <p className="text-sm text-red-700">{usersFetchError}</p>
         </div>
       )}
 
       {warehousesFetchError && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700">{warehousesFetchError}</p>
-            </div>
-            <div className="ml-auto pl-3">
-              <div className="-mx-1.5 -my-1.5">
-                <button
-                  onClick={() => fetchWarehouses()}
-                  className="inline-flex bg-red-50 rounded-md p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                  <span className="sr-only">Retry</span>
-                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
+        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+          <p className="text-sm text-red-700">{warehousesFetchError}</p>
         </div>
       )}
 
-      <div className="bg-white shadow-lg rounded-lg overflow-hidden">
+      <div className="  rounded-lg overflow-hidden">
+        {/* Table controls */}
+        <div className="flex space-x-4 mb-4">
+          <div>
+            <label htmlFor="size" className="border rounded p-1 text-black">Size:</label>
+            <input
+              type="number"
+              id="size"
+              value={pagination.size}
+              onChange={(e) => {
+                const newSize = parseInt(e.target.value);
+                setPagination(prev => ({ ...prev, size: newSize }));
+                fetchUsers(0, newSize);
+              }}
+              min="1"
+              className="border rounded p-1 text-black"
+            />
+          </div>
+          
+        </div>
+         {/* Pagination */}
+         <div className="pagination mb-4 text-black">
+              <button 
+                onClick={() => handlePageChange(pagination.number - 1)} 
+                disabled={pagination.first || isLoadingUsers} 
+                className="bg-gray-300 rounded p-2 mr-2"
+              >
+                Previous
+              </button>
+              <span className="mx-2 text-black">Page {pagination.number + 1} of {pagination.totalPages}</span>
+              <button 
+                onClick={() => handlePageChange(pagination.number + 1)} 
+                disabled={pagination.last || isLoadingUsers} 
+                className="bg-gray-300 rounded p-2 ml-2"
+              >
+                Next
+              </button>
+            </div>
+        
         {isLoadingUsers ? (
           <div className="flex justify-center items-center py-10">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500"></div>
           </div>
         ) : usersFetchError ? (
           <div className="p-6 text-center">
             <div className="text-red-500 mb-4">{usersFetchError}</div>
             <button 
               onClick={() => fetchUsers(pagination.number)} 
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600"
             >
               Retry
             </button>
@@ -914,190 +910,58 @@ export default function Users() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Phone
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Warehouse
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Role
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Warehouse</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {user.firstName} {user.lastName}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{user.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{user.phoneNumber}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {user.warehouse ? (
-                          <div>
-                            <div className="font-medium">{user.warehouse.name}</div>
-                            <div className="text-gray-500 text-xs">
-                              {user.warehouse.code} - {user.warehouse.location}
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-gray-500">No warehouse</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                          ${user.role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-800' : 
-                            user.role === 'ADMIN' ? 'bg-blue-100 text-blue-800' : 
-                            'bg-green-100 text-green-800'}`}>
-                          {user.role || 'USER'}
+                {Array.isArray(users) && users.length > 0 ? (
+                  users.map((user, index) => (
+                    <tr key={user.id} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-gray-100' : ''}`}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{`${user.firstName} ${user.lastName}`}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.email}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.phoneNumber || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.role === 'ADMIN' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
+                          {user.role}
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button 
-                        className="text-blue-600 hover:text-blue-900 mr-4"
-                        onClick={() => openEditForm(user.id)}
-                        disabled={isLoadingEditUser}
-                      >
-                        {isLoadingEditUser && userToEdit === user.id ? (
-                          <span className="flex items-center">
-                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Loading...
-                          </span>
-                        ) : (
-                          "Edit"
-                        )}
-                      </button>
-                      <button 
-                        className="text-red-600 hover:text-red-900 mr-4 disabled:opacity-50"
-                        onClick={() => openDeleteConfirmModal(user)}
-                        disabled={isDeleting === user.id}
-                      >
-                        {isDeleting === user.id ? (
-                          <span className="flex items-center">
-                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Deleting...
-                          </span>
-                        ) : (
-                          "Delete"
-                        )}
-                      </button>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {user.warehouse?.name || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <button 
+                          onClick={() => openEditForm(user.id)} 
+                          className="text-blue-500 hover:text-blue-700 mr-4"
+                          disabled={isLoadingEditUser && userToEdit === user.id}
+                        >
+                          {isLoadingEditUser && userToEdit === user.id ? 'Loading...' : 'Edit'}
+                        </button>
+                        <button 
+                          onClick={() => openDeleteConfirmModal(user)} 
+                          className={`${isDeleting === user.id ? 'text-gray-400' : 'text-red-500 hover:text-red-700'}`}
+                          disabled={isDeleting === user.id}
+                        >
+                          {isDeleting === user.id ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                      {usersFetchError ? `Error loading users: ${usersFetchError}` : 'No users found'}
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
             
-            {/* Pagination */}
-            {pagination.totalPages > 1 && (
-              <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm text-gray-700">
-                      Showing <span className="font-medium">{pagination.number * pagination.size + 1}</span> to{' '}
-                      <span className="font-medium">
-                        {Math.min((pagination.number + 1) * pagination.size, pagination.totalElements)}
-                      </span>{' '}
-                      of <span className="font-medium">{pagination.totalElements}</span> results
-                    </p>
-                  </div>
-                  <div>
-                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                      <button
-                        onClick={() => handlePageChange(pagination.number - 1)}
-                        disabled={pagination.first}
-                        className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
-                          pagination.first ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'
-                        }`}
-                      >
-                        <span className="sr-only">Previous</span>
-                        <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                      
-                      {/* Page numbers */}
-                      {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                        // Show pages around current page
-                        let pageToShow;
-                        if (pagination.totalPages <= 5) {
-                          pageToShow = i;
-                        } else {
-                          const startPage = Math.max(0, pagination.number - 2);
-                          const endPage = Math.min(pagination.totalPages - 1, pagination.number + 2);
-                          
-                          if (endPage - startPage < 4) {
-                            if (startPage === 0) {
-                              pageToShow = i;
-                            } else {
-                              pageToShow = pagination.totalPages - 5 + i;
-                            }
-                          } else {
-                            pageToShow = startPage + i;
-                          }
-                        }
-                        
-                        return (
-                          <button
-                            key={pageToShow}
-                            onClick={() => handlePageChange(pageToShow)}
-                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                              pagination.number === pageToShow
-                                ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                            }`}
-                          >
-                            {pageToShow + 1}
-                          </button>
-                        );
-                      })}
-                      
-                      <button
-                        onClick={() => handlePageChange(pagination.number + 1)}
-                        disabled={pagination.last}
-                        className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
-                          pagination.last ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'
-                        }`}
-                      >
-                        <span className="sr-only">Next</span>
-                        <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </nav>
-                  </div>
-                </div>
-              </div>
-            )}
+           
           </div>
         )}
       </div>
@@ -1175,7 +1039,7 @@ export default function Users() {
               </button>
             </div>
             
-            {apiError && (
+            {apiError !== null && apiError !== undefined && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
                 {apiError.split('\n').map((error, index) => (
                   <p key={index} className="text-sm text-red-600 mb-1">
@@ -1345,7 +1209,7 @@ export default function Users() {
               </button>
             </div>
             
-            {editApiError && (
+            {editApiError !== null && editApiError !== undefined && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
                 {editApiError.split('\n').map((error, index) => (
                   <p key={index} className="text-sm text-red-600 mb-1">

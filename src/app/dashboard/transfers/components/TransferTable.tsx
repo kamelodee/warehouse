@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Transfer } from '@/types/transfer';
 import TransferDetailsModal from './TransferDetailsModal';
+import { FiEye } from 'react-icons/fi';
 
 interface TransferTableProps {
   transfers: Transfer[];
@@ -29,14 +30,14 @@ const TransferTable: React.FC<TransferTableProps> = ({
 
   const renderStatusBadge = (type?: string) => {
     const statusColors: { [key: string]: string } = {
-      'completed': 'bg-green-200 text-green-800',
-      'pending': 'bg-yellow-200 text-yellow-800',
-      'cancelled': 'bg-red-200 text-red-800'
+      'completed': 'bg-green-100 text-green-800',
+      'pending': 'bg-yellow-100 text-yellow-800',
+      'cancelled': 'bg-red-100 text-red-800'
     };
 
     const safeType = type?.toLowerCase() || 'unknown';
     return (
-      <span className={`px-2 py-1 rounded-full text-xs ${statusColors[safeType] || 'bg-gray-200 text-gray-800'}`}>
+      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[safeType] || 'bg-gray-100 text-gray-800'}`}>
         {type || 'Unknown'}
       </span>
     );
@@ -45,64 +46,58 @@ const TransferTable: React.FC<TransferTableProps> = ({
   return (
     <>
       <div className="overflow-x-auto">
-        <table className="w-full bg-white shadow-md rounded-lg">
-          <thead>
-            <tr className="bg-gray-100 text-gray-600 uppercase text-sm leading-normal">
-              <th className="py-3 px-6 text-left">Transfer Number</th>
-              <th className="py-3 px-6 text-left">Type</th>
-              <th className="py-3 px-6 text-left">Date</th>
-              <th className="py-3 px-6 text-left">Source Warehouse</th>
-              <th className="py-3 px-6 text-left">Destination Warehouse</th>
-              <th className="py-3 px-6 text-left">Status</th>
-              <th className="py-3 px-6 text-center">Actions</th>
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transfer Number</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source Warehouse</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destination Warehouse</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
-          <tbody className="text-gray-600 text-sm font-light">
-            {transfers.map((transfer) => (
-              <tr key={transfer.id} className="border-b border-gray-200 hover:bg-gray-100">
-                <td className="py-3 px-6 text-left whitespace-nowrap">
-                  <div className="flex items-center">
-                    <span className="font-medium">{transfer.number || 'N/A'}</span>
-                  </div>
-                </td>
-                <td className="py-3 px-6 text-left">
-                  {renderStatusBadge(transfer.type)}
-                </td>
-                <td className="py-3 px-6 text-left">
-                  <span>{transfer.date || 'N/A'}</span>
-                </td>
-                <td className="py-3 px-6 text-left">
-                  <span>{transfer.sourceWarehouse?.name || 'Unknown'}</span>
-                </td>
-                <td className="py-3 px-6 text-left">
-                  <span>{transfer.destinationWarehouse?.name || 'Unknown'}</span>
-                </td>
-                <td className="py-3 px-6 text-left">
-                  {renderStatusBadge(transfer.type)}
-                </td>
-                <td className="py-3 px-6 text-center">
-                  <div className="flex item-center justify-center space-x-2">
+          <tbody className="bg-white divide-y divide-gray-200">
+            {transfers.length > 0 ? (
+              transfers.map((transfer, index) => (
+                <tr key={transfer.id} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-gray-100' : ''}`}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{transfer.number || 'N/A'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {renderStatusBadge(transfer.type)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {transfer.date || 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {transfer.sourceWarehouse?.name || 'Unknown'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {transfer.destinationWarehouse?.name || 'Unknown'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {renderStatusBadge(transfer.type)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <button 
                       onClick={() => handleViewDetails(transfer)}
-                      className="text-indigo-500 hover:text-indigo-700 focus:outline-none"
+                      className="text-blue-500 hover:text-blue-700 focus:outline-none flex items-center"
                       title="View Details"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
+                      <FiEye className="mr-1" /> View
                     </button>
-                  </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={7} className="px-6 py-4 text-center text-sm text-gray-500">
+                  No transfers found
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
-        {transfers.length === 0 && (
-          <div className="text-center py-4 text-gray-500">
-            No transfers found
-          </div>
-        )}
         <div className="mt-4 flex justify-between items-center text-sm text-gray-600">
           <div>
             Total Transfers: {totalTransfers}

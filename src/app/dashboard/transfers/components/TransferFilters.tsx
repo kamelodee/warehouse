@@ -100,14 +100,14 @@ const TransferFilters: React.FC<TransferFiltersProps> = ({
   ].filter(filter => filter !== undefined && filter !== '').length;
 
   return (
-    <div className="rounded-lg p-2 mb-2">
+    <div className="mb-4">
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
         <div>
           <label className="block text-xs text-gray-700 mb-1">Source Warehouse</label>
           <select 
             value={sourceWarehouse || ''} 
             onChange={(e) => setSourceWarehouse(e.target.value ? Number(e.target.value) : undefined)}
-            className="w-full border border-gray-300 rounded-md px-1 py-1 text-xs"
+            className="border rounded p-1 text-black text-xs w-full"
           >
             <option value="">All Warehouses</option>
             {warehouses.map(warehouse => (
@@ -123,7 +123,7 @@ const TransferFilters: React.FC<TransferFiltersProps> = ({
           <select 
             value={destinationWarehouse || ''} 
             onChange={(e) => setDestinationWarehouse(e.target.value ? Number(e.target.value) : undefined)}
-            className="w-full border border-gray-300 rounded-md px-1 py-1 text-xs"
+            className="border rounded p-1 text-black text-xs w-full"
           >
             <option value="">All Warehouses</option>
             {warehouses.map(warehouse => (
@@ -139,7 +139,7 @@ const TransferFilters: React.FC<TransferFiltersProps> = ({
           <select 
             value={type} 
             onChange={(e) => setType(e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-1 py-1 text-xs"
+            className="border rounded p-1 text-black text-xs w-full"
           >
             <option value="">All Types</option>
             {transferTypes.map(transferType => (
@@ -156,7 +156,7 @@ const TransferFilters: React.FC<TransferFiltersProps> = ({
             type="date" 
             value={startDate} 
             onChange={(e) => setStartDate(e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-1 py-1 text-xs"
+            className="border rounded p-1 text-black text-xs w-full"
           />
         </div>
 
@@ -166,54 +166,51 @@ const TransferFilters: React.FC<TransferFiltersProps> = ({
             type="date" 
             value={endDate} 
             onChange={(e) => setEndDate(e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-1 py-1 text-xs"
+            className="border rounded p-1 text-black text-xs w-full"
           />
         </div>
 
-        <div className="flex items-end">
+        <div className="flex items-end space-x-2">
           <button 
             onClick={handleApplyFilters}
-            className="w-full bg-indigo-600 text-white rounded-md px-2 py-1 text-xs hover:bg-indigo-700 transition-colors"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded p-1 text-xs"
           >
             Apply Filters
           </button>
-        </div>
-
-        <div className="flex items-end">
           <button 
             onClick={handleResetFilters}
-            className="w-full bg-gray-200 text-gray-700 rounded-md px-2 py-1 text-xs hover:bg-gray-300"
+            className="bg-gray-300 hover:bg-gray-400 text-gray-700 rounded p-1 text-xs"
           >
-            Clear Filters
+            Clear
           </button>
         </div>
       </div>
 
       {activeFiltersCount > 0 && (
-        <div className="mt-2 flex items-center space-x-2">
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="text-xs text-gray-600">Active Filters:</span>
           {sourceWarehouse && (
-            <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs">
+            <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">
               Source: {warehouses.find(w => w.id === sourceWarehouse)?.name}
             </span>
           )}
           {destinationWarehouse && (
-            <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs">
+            <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">
               Destination: {warehouses.find(w => w.id === destinationWarehouse)?.name}
             </span>
           )}
           {type && (
-            <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs">
+            <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">
               Type: {type}
             </span>
           )}
           {startDate && (
-            <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs">
+            <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">
               From: {startDate}
             </span>
           )}
           {endDate && (
-            <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs">
+            <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">
               To: {endDate}
             </span>
           )}
