@@ -19,19 +19,18 @@ const nextConfig = {
     
     return config;
   },
-  // Disable telemetry
-  telemetry: { 
-    disabled: true 
-  },
+  // Telemetry can be disabled via environment variable
+  // or via the official Next.js CLI flag
   // Explicitly exclude directories from the build
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'].filter(ext => {
     // This ensures files in backup-temp are not considered as pages
     return true;
   }),
-  // Exclude directories from the file system
+  // Configure on-demand entries
   onDemandEntries: {
-    // Exclude backup-temp from the build
-    exclude: ['backup-temp'],
+    // Configure page buffer size
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
   }
 }
 
