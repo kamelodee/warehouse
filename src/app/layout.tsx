@@ -18,9 +18,9 @@ export const metadata: Metadata = {
   title: "Inventory management system (IMS)",
   description: "Manage your inventory, shipments, and warehouse operations",
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon.ico',
-    apple: '/favicon.ico',
+    icon: '/logo.jpg',
+    shortcut: '/logo.jpg',
+    apple: '/logo.jpg',
   },
 };
 
