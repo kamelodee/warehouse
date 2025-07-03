@@ -550,3 +550,54 @@ export const refreshProducts = async (): Promise<any> => {
     throw enhancedError;
   }
 };
+
+/**
+ * Upload products file to the server
+ * @param file The file to upload
+ * @param onProgress Optional callback for tracking upload progress
+ * @returns Promise with the upload response
+ */
+export const uploadProductsFile = async (file: File, onProgress?: (progress: number) => void): Promise<any> => {
+  try {
+    const token = getAccessToken();
+    if (!token) {
+      const errorMessage = 'Authentication token not found';
+      const error = new Error(errorMessage);
+      const enhancedError = error as unknown as Record<string, unknown>;
+      
+      logApiError('POST', '/products/upload', enhancedError);
+      throw enhancedError;
+    }
+
+    // Create form data
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // Track upload progress if callback provided
+    const config = {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data'
+      },
+      onUploadProgress: (progressEvent: any) => {
+        if (onProgress && progressEvent.total) {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          onProgress(percentCompleted);
+        }
+      }
+    };
+
+    console.log('Uploading products file:', file.name);
+    const response = await axios.post(`${API_BASE_URL}/products/upload`, formData, config);
+    console.log('Products file uploaded successfully:', response.data);
+    return response.data;
+  } catch (error: unknown) {
+    console.error('Error uploading products file:', error);
+    const enhancedError = (error instanceof Error ? 
+      { ...error, message: error.message } : 
+      error) as Record<string, unknown>;
+    
+    logApiError('POST', '/products/upload', enhancedError);
+    throw enhancedError;
+  }
+};

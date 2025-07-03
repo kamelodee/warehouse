@@ -24,6 +24,11 @@ const DownloadTemplate = dynamic(() => import('./DownloadTemplate'), {
   ssr: false
 });
 
+const ProductUpload = dynamic(() => import('./ProductUpload'), {
+  loading: () => <div className="p-2 border rounded">Loading upload button...</div>,
+  ssr: false
+});
+
 // Use the Product interface from productService but ensure id is required
 interface ProductWithRequiredId extends Omit<Product, 'id'> {
     id: number;
@@ -158,7 +163,9 @@ const Products = () => {
     return (
         <div className="p-4">
             <h1 className="text-black font-bold mb-4">Products Management</h1>
+            <div className="flex justify-between">
             <div className="flex space-x-2 mb-4">
+               
                 <button onClick={() => setIsModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md">Add Product</button>
                 <button 
                     onClick={handleRefreshProducts} 
@@ -169,6 +176,10 @@ const Products = () => {
                 >
                     {isRefreshing ? 'Refreshing...' : 'Refresh'}
                 </button>
+            </div>
+            <ProductUpload 
+                    onUploadSuccess={fetchProducts} 
+                />
             </div>
             <Suspense fallback={<div>Loading...</div>}>
                 <AddProduct 
